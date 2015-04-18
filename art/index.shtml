@@ -1,0 +1,53 @@
+<html>
+<body>
+<h1>Ascii Art!</h1>
+<br/>
+<h3>Bumble Bee</h3>
+<pre><!--#include file="Bee.txt" --></pre>
+<br/>
+<h3>Statue of Liberty</h3>
+<pre><!--#include file="Statue of Liberty.txt" --></pre>
+<br/>
+<h3>Tree</h3>
+<pre><!--#include file="tree.txt" --></pre>
+<br/>
+<h3>The One Dollar Bill (USD)</h3>
+<pre><!--#include file="One Dollar Bill.txt" --></pre>
+<br/>
+<h3>3D Keyboard</h3>
+<pre><!--#include file="3d keyboard.txt" --></pre>
+<br/>
+<h3>Alien Ship</h3>
+<pre><!--#include file="alien ship.txt" --></pre>
+<br/>
+<h3>Portal 2 Logo</h3>
+<pre><!--#include file="portal 2 logo.txt" --></pre>
+<br/>
+<h3>Half-Life Logo</h3>
+<pre><!--#include file="Half-Life logo.txt" --></pre>
+<br/>
+<h3>Windows Icon</h3>
+<pre><!--#include file="Windows icon.txt" --></pre>
+<br/>
+<h3>The Legend of Zelda Logo</h3>
+<pre><!--#include file="zelda logo.txt" --></pre>
+<br/>
+<h3>Periodic Table of Elements</h3>
+<pre><!--#include file="pte.txt" --></pre>
+<br/>
+<h3>The Titanic</h3>
+<pre><!--#include file="text titanic.txt" --></pre>
+<br/>
+<h3>Star Trek TOS Phaser</h3>
+<pre><!--#include file="Phaser.txt" --></pre>
+<br/>
+<h3>Birds</h3>
+<pre><!--#include file="birds.txt" --></pre>
+<br/>
+<h3>Cottage</h3>
+<pre><!--#include file="cottage.txt" --></pre>
+<br/>
+<h3>Swords</h3>
+<pre><!--#include file="swords.txt" --></pre>
+</body>
+</html>

@@ -1,0 +1,956 @@
+
+<html>
+    <head>
+        <title>Game of Life</title>
+        <script>
+            
+            var ruleBirth =   [false, false, false, true , false, false, false, false, false];
+            var ruleSurvive = [false, false, true , true , false, false, false, false, false];
+            
+            function updateRules(){
+                for(var i=0;i<=8;i++){
+                    ruleBirth[i] = document.getElementById("b"+i).checked;
+                    ruleSurvive[i] = document.getElementById("s"+i).checked;
+                }
+            }
+            
+            function updateRuleIndicators(){
+                for(var i=0;i<=8;i++){
+                    document.getElementById("b"+i).checked = ruleBirth[i];
+                    document.getElementById("s"+i).checked = ruleSurvive[i];
+                }
+            }
+            
+            function toggleRuleTable(){
+                if( document.getElementById("ruleTable").style.display=='none' ){
+                    document.getElementById("ruleTable").style.display = '';
+                    document.getElementById("rulesShowHideButton").textContent = 'Hide Rules';
+                }else{
+                    document.getElementById("ruleTable").style.display = 'none';
+                    document.getElementById("rulesShowHideButton").textContent = 'Show Rules';
+                }
+            }
+            
+            function getRuleString(){
+                var s = "B";
+                for(var i=0;i<=8;i++){
+                    if(ruleBirth[i]){
+                        s += i;
+                    }
+                }
+                s+="/S";
+                for(var i=0;i<=8;i++){
+                    if(ruleSurvive[i]){
+                        s += i;
+                    }
+                }
+                return s;
+            }
+            
+            function applyrRulePreset(rules){
+                
+                for(var i=0;i<=8;i++){
+                    ruleBirth[i] = false;
+                    ruleSurvive[i] = false;
+                }
+                
+                var a = 0;
+                
+                for(var i=0;i<rules.length;i++){
+                    
+                    var b = -1;
+                    
+                    switch(rules[i]){
+                        case 'B':
+                            a = 1;
+                            break;
+                        case 'S':
+                            a = 2;
+                            break;
+                        case '/':
+                            a = 0;
+                            break;
+                        case '0':
+                            b = 0;
+                            break;
+                        case '1':
+                            b = 1;
+                            break;
+                        case '2':
+                            b = 2;
+                            break;
+                        case '3':
+                            b = 3;
+                            break;
+                        case '4':
+                            b = 4;
+                            break;
+                        case '5':
+                            b = 5;
+                            break;
+                        case '6':
+                            b = 6;
+                            break;
+                        case '7':
+                            b = 7;
+                            break;
+                        case '8':
+                            b = 8;
+                            break;
+                    }
+                    
+                    if(b != -1){
+                        if(a == 1){
+                            ruleBirth[b] = true;
+                        }else if(a == 2){
+                            ruleSurvive[b] = true;
+                        }
+                    }
+                }
+                
+                updateRuleIndicators();
+            }
+            
+
+            var playing = false;
+
+            var step = 0;
+
+            var cellSize = 8;
+
+            var canvasSizeDif = {x:16, y:116};
+
+            var gridSize;
+
+            var grid;
+            var tempGrid;
+            var updateGrid;
+
+            var canvas;
+            var context;
+
+            var pStepText;
+            var buttonPlayPause;
+            var inputTextFps;
+            var inputFileLoad;
+
+            var interval;
+
+            var fps = 10;
+
+            var mouseDown = false;
+
+            function init(){
+
+                pStepText = document.getElementById("pStepText");
+                buttonPlayPause = document.getElementById("buttonPlayPause");
+                inputTextFps = document.getElementById("inputTextFps");
+                inputFileLoad = document.getElementById("inputFileLoad");
+
+                inputFileLoad.addEventListener("change", readFile, false);
+
+                inputTextFps.value = fps;
+
+                canvas = document.getElementById("canvasMain");
+
+                canvas.width  = window.innerWidth - canvasSizeDif.x;
+                canvas.height = window.innerHeight - canvasSizeDif.y;
+
+                setGridSize();
+
+                grid = createArray(gridSize.width,gridSize.height);
+                tempGrid = createArray(gridSize.width,gridSize.height);
+                updateGrid = createArray(gridSize.width,gridSize.height);
+
+                context = canvas.getContext('2d');
+
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        grid[i][j] = false;
+                        tempGrid[i][j] = false;
+                        updateGrid[i][j] = true;
+                    }
+                }
+
+                updateInterval();
+
+                firstDraw();
+
+                window.addEventListener("keypress", keyPress, false);
+                window.addEventListener("resize", resizeWindow, false);
+
+                canvas.onmousedown = downCanvas;
+
+                canvas.onmouseup = upCanvas;
+
+                canvas.onmousemove = moveCanvas;
+                
+                updateRuleIndicators();
+                toggleRuleTable();
+            }
+
+            function downCanvas(event){
+                mouseDown = true;
+                var mousePosition = getMousePosition(event);
+                var x = Math.floor((mousePosition.x+window.scrollX)/cellSize);
+                var y = Math.floor((mousePosition.y+window.scrollY)/cellSize);
+                if(x>=0 && y>=0 && x<gridSize.width && y<gridSize.height){
+                    updateGrid[x][y] = true;
+                    grid[x][y] = !grid[x][y];
+                    cellSet = grid[x][y]
+                }
+                redraw();
+            }
+
+            function upCanvas(event){
+                mouseDown = false;
+            }
+
+            function moveCanvas(event){
+                event.preventDefault();
+                if(mouseDown){
+                    var mousePosition = getMousePosition(event);
+                    var x = Math.floor((mousePosition.x+window.scrollX)/cellSize);
+                    var y = Math.floor((mousePosition.y+window.scrollY)/cellSize);
+                    if(x>=0 && y>=0 && x<gridSize.width && y<gridSize.height){
+                        updateGrid[x][y] = true;
+                        grid[x][y] = cellSet;
+                    }
+
+                    redraw();
+                }
+            }
+
+            function setGridSize(){
+                gridSize = {width:Math.floor((canvas.width-1)/cellSize), height:Math.floor((canvas.height-1)/cellSize)};
+            }
+
+            function keyPress(event){
+                //alert(event.keyCode);
+                if(event.keyCode == 112){ //P
+                    playPause();
+                }
+                if(event.keyCode == 110){ //N
+                    nextStep();
+                }
+
+                if(event.keyCode == 97){ //a
+                    shiftGrid(-1, 0);
+                }
+                if(event.keyCode == 119){ //w
+                    shiftGrid(0, -1);
+                }
+                if(event.keyCode == 100){ //d
+                    shiftGrid(1, 0);
+                }
+                if(event.keyCode == 115){ //s
+                    shiftGrid(0, 1);
+                }
+
+                if(event.keyCode == 65){ //A
+                    shiftGrid(-10, 0);
+                }
+                if(event.keyCode == 87){ //W
+                    shiftGrid(0, -10);
+                }
+                if(event.keyCode == 68){ //D
+                    shiftGrid(10, 0);
+                }
+                if(event.keyCode == 83){ //S
+                    shiftGrid(0, 10);
+                }
+            }
+
+            function shiftGrid(x, y){
+
+                var tGrid = createArray(gridSize.width,gridSize.height);
+                var tTempGrid = createArray(gridSize.width,gridSize.height);
+
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        tGrid[i][j] = getCellWithSafty(i-x, j-y, 0);
+                    }
+                }
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        grid[i][j] = tGrid[i][j];
+                        updateGrid[i][j] = true;
+                    }
+                }
+
+                redraw();
+            }
+
+            function flip(h, v){
+                var tGrid = createArray(gridSize.width,gridSize.height);
+                var tTempGrid = createArray(gridSize.width,gridSize.height);
+
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        tGrid[i][j] = getCellWithSafty((h?gridSize.width-1-i:i), (v?gridSize.height-1-j:j), 0);
+                    }
+                }
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        grid[i][j] = tGrid[i][j];
+                        updateGrid[i][j] = true;
+                    }
+                }
+
+                redraw();
+            }
+
+            function setPlayPauseText(){
+                buttonPlayPause.innerHTML = playing?"Pause":"Play";
+            }
+
+            function playPause(){
+                playing = !playing;
+                setPlayPauseText();
+            }
+
+            function clearGrid(){
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        grid[i][j] = false;
+                        updateGrid[i][j] = true;
+                    }
+                }
+
+                step = 0;
+
+                firstDraw();
+
+                playing = false;
+                setPlayPauseText();
+            }
+
+            function nextStep(){
+                step++;
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        var n = numberOfneighbours(i, j);
+                        tempGrid[i][j] = ((!grid[i][j] && ruleBirth[n]) || (grid[i][j] && ruleSurvive[n]));
+                        /*
+                        if(n<2 || n>3){
+                            tempGrid[i][j] = false;
+                        }else if(grid[i][j] && (n==2 || n==3)){
+                            tempGrid[i][j] = true;
+                        }else if(!grid[i][j] && n==3){
+                            tempGrid[i][j] = true;
+                        }
+                        */
+                    }
+                }
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        updateGrid[i][j] = (grid[i][j] != tempGrid[i][j]);
+                        grid[i][j] = tempGrid[i][j];
+                        tempGrid[i][j] = false;
+                    }
+                }
+
+                redraw();
+            }
+
+            function numberOfneighbours(x, y){
+                var n = 0;
+                n += getCellWithSafty(x-1, y-1, 0);
+                n += getCellWithSafty(x+1, y-1, 0);
+                n += getCellWithSafty(x-1, y+1, 0);
+                n += getCellWithSafty(x+1, y+1, 0);
+                n += getCellWithSafty(x-1, y, 0);
+                n += getCellWithSafty(x+1, y, 0);
+                n += getCellWithSafty(x, y-1, 0);
+                n += getCellWithSafty(x, y+1, 0);
+                return n;
+            }
+
+            function getCellWithSafty(x, y, d){
+                if(x>=0 && y>=0 && x<gridSize.width && y<gridSize.height){
+                    return grid[x][y];
+                }
+                return d;
+            }
+
+            function firstDraw(){
+
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.strokeStyle = '#DDDDDD';
+                //context.strokeRect(0, 0, canvas.width, canvas.height);
+
+                context.lineWidth = 1;
+
+                redraw();
+                
+                if(cellSize>1){
+
+                    for(var i=0;i<gridSize.width;i++){
+                        for(var j=0;j<gridSize.height;j++){
+                            context.strokeRect(i*cellSize+.5, j*cellSize+.5, cellSize, cellSize);
+                        }
+                    }
+                }
+
+            }
+
+            function redraw(){
+                
+                if(cellSize == 1){
+                    context.fillStyle = '#FFFFFF';
+                    context.fillRect(0, 0, gridSize.width, gridSize.height);
+                    for(var i=0;i<gridSize.width;i++){
+                        for(var j=0;j<gridSize.height;j++){
+                            if(updateGrid[i][j]){
+                                if(grid[i][j]){
+                                    context.fillStyle = '#000000';
+                                    context.fillRect(i, j, 1, 1);
+                                }
+                                updateGrid[i][j] = false;
+                            }
+                        }
+                    }
+                }else{
+
+                    for(var i=0;i<gridSize.width;i++){
+                        for(var j=0;j<gridSize.height;j++){
+                            if(updateGrid[i][j]){
+                                if(grid[i][j]){
+                                    context.fillStyle = '#000000';
+                                    context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
+                                }else{
+                                    context.fillStyle = '#FFFFFF';
+                                    context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
+                                }
+                                updateGrid[i][j] = false;
+                            }
+                        }
+                    }
+                }
+
+                pStepText.innerHTML = "Step: "+step;
+            }
+
+            function getMousePosition(event){
+                var x = event.x;
+                var y = event.y;
+
+                x -= canvas.offsetLeft;
+                y -= canvas.offsetTop;
+
+                return {x:x, y:y}
+            }
+
+            function createArray(length) {
+                var arr = new Array(length || 0),
+                    i = length;
+
+                if (arguments.length > 1) {
+                    var args = Array.prototype.slice.call(arguments, 1);
+                    while(i--) arr[length-1 - i] = createArray.apply(this, args);
+                }
+
+                return arr;
+            }
+
+            function toNumber(n, d) {
+                return (!isNaN(parseFloat(n)) && isFinite(n))?n:d;
+            }
+
+            function changeFps(v){
+                inputTextFps.value = parseInt(toNumber(inputTextFps.value, fps), 10) + v;
+                updateInterval();
+            }
+
+            function updateInterval(){
+                fps = toNumber(inputTextFps.value, fps);
+                clearInterval(interval);
+                if(fps>0){
+                    interval = setInterval(mainLoop, 1000 / fps);
+                }
+            }
+            
+            function changeCellSize(change){
+                cellSize+=change;
+                if(cellSize < 1){
+                    cellSize = 1;
+                }
+                resizeWindow(null);
+            }
+
+            function resizeWindow(event){
+
+                canvas.width  = window.innerWidth - canvasSizeDif.x;
+                canvas.height = window.innerHeight - canvasSizeDif.y;
+
+                smallSize = {width:gridSize.width, height:gridSize.height}
+
+                setGridSize();
+
+                smallSize.width = Math.min(smallSize.width, gridSize.width);
+                smallSize.height = Math.min(smallSize.height, gridSize.height);
+
+                var oldGrid = createArray(gridSize.width,gridSize.height);
+                var oldTempGrid = createArray(gridSize.width,gridSize.height);
+                //var oldUpdateGrid = createArray(gridSize.width,gridSize.height);
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        oldGrid[i][j] = false;
+                        oldTempGrid[i][j] = false;
+                        //oldUpdateGrid[i][j] = false;
+                    }
+                }
+                for(var i=0;i<smallSize.width;i++){
+                    for(var j=0;j<smallSize.height;j++){
+                        oldGrid[i][j] = grid[i][j];
+                        oldTempGrid[i][j] = tempGrid[i][j];
+                        //oldUpdateGrid[i][j] = updateGrid[i][j];
+                    }
+                }
+
+                grid = createArray(gridSize.width,gridSize.height);
+                tempGrid = createArray(gridSize.width,gridSize.height);
+                updateGrid = createArray(gridSize.width,gridSize.height);
+
+                for(var j=0;j<gridSize.height;j++){
+                    for(var i=0;i<gridSize.width;i++){
+                        grid[i][j] = oldGrid[i][j];
+                        tempGrid[i][j] = oldTempGrid[i][j];
+                        updateGrid[i][j] = true;
+                    }
+                }
+
+                mouseDown = false;
+
+                firstDraw();
+
+            }
+
+            var mainLoop = function(){
+                if(playing){
+                    nextStep();
+                }
+            }
+        
+            function HtmlEncode(s){
+                var el = document.createElement("div");
+                el.innerText = el.textContent = s;
+                s = el.innerHTML;
+                return s;
+            }
+            
+            function replaceAll(find, replace, str) {
+                return str.replace(new RegExp(find, 'g'), replace);
+            }
+
+            function saveFile(){
+
+                var data1= "";
+                var data2 = "";
+
+                var q = 0;
+
+                var mode = null;
+
+                var x = gridSize.width;
+                var y = gridSize.height;
+                var w = 1;
+                var h = 1;
+
+                var newLine = false;
+
+
+                for(var j=0;j<gridSize.height;j++){
+                    for(var i=0;i<gridSize.width;i++){
+                        if(grid[i][j]){
+                            w = Math.max(w, i+1);
+                            h = Math.max(h, j+1);
+                            x = Math.min(x, i);
+                            y = Math.min(y, j);
+                        }
+                    }
+                }
+
+                data1 += "#Created by Nedearb's Game of Life Simulator\n"+"x = "+w+", y = "+h+", rule = "+getRuleString()+"\n";
+                
+                data1 = replaceAll(" ", "%20", data1);
+                data1 = replaceAll("\n", "%0A", data1);
+
+                for(var j=y;j<y+h;j++){
+                    for(var i=x;i<x+w;i++){
+                        if(grid[i][j]!=mode || newLine){
+                            if(q>0){
+                                if(q==w){
+                                    q=0;
+                                }else{
+                                    if(q>1){
+                                        data2+=(q+"");
+                                    }
+                                    data2+=mode?"o":"b";
+                                    q = 0;
+                                }
+                            }
+                        }
+                        q++;
+                        mode = grid[i][j];
+                        if(newLine){
+                            data2+="$";
+                            newLine = false;
+                        }
+                    }
+                    if(j<y+h-1){
+                        newLine = true;
+                    }
+                }
+                data2+="!";
+
+                var d = 0;
+                var db = "";
+
+                var l = 0;
+
+                for(var i=0;i<data2.length;i++){
+                    if(data2[i]=='$'){
+                        if(d==0){
+                            l = i;
+                        }
+                        db+="$";
+                        d++;
+                    }else{
+                        if(d>1){
+                            //alert("db: "+db+"  to: "+d+"$");
+                            data2 = data2.replace(db, d+"$");
+                            i = l-1;
+                        }
+                        d = 0;
+                        db = "";
+                    }
+                }
+
+                window.location = "data:application/octet-stream,"+data1+""+data2;
+
+            }
+
+            function readFile(event){
+                var f = event.target.files[0];
+
+                if(f){
+                    var r = new FileReader();
+                    r.onload = function(e){
+                        try{
+
+                            var contents = e.target.result;
+
+                            var newGrid = null;
+
+                            var x = 0;
+                            var y = 0;
+                            var w = 0;
+                            var h = 0;
+
+                            var repeats = 0;
+
+                            var nd = 1;
+                            var outOfBounds = false;
+
+                            var skipToNextLine = false;
+
+                            var lookForEquals = false;
+                            var lookForVar = false;
+                            var lookForVarMode = true;
+                            var varToSet = ' ';
+                            
+                            var ruleString = "";
+
+                            //alert(contents);
+
+                            for(var i=0;i<contents.length;i++){
+
+                                var n = -1;
+
+                                if(contents[i]=='#'){
+                                    skipToNextLine = true;
+                                    continue;
+                                }
+                                if(contents[i]=='!'){
+                                    break;
+                                }
+                                if(skipToNextLine){
+                                    if(contents[i]=='\n'){
+                                        skipToNextLine = false;
+                                        continue;
+                                    }
+                                }else{
+                                    if(lookForVarMode){
+
+                                        if(contents[i]=='\n'){
+                                            lookForVarMode = false;
+                                            lookForVar = false;
+                                            lookForEquals = false;
+                                            nd = 1;
+                                            continue;
+                                        }
+
+                                        if(contents[i]=='x' || contents[i]=='y' || (contents[i-3]=='r' && contents[i-2]=='u' && contents[i-1]=='l' && contents[i]=='e')){
+                                            lookForEquals = true;
+                                            varToSet = contents[i];
+                                        }else if(lookForEquals){
+                                            if(contents[i]=='='){
+                                                lookForEquals = false;
+                                                lookForVar = true;
+                                            }
+                                        }else if(lookForVar){
+                                            n = 0;
+                                            if(contents[i]=='0'){
+                                                n = 0;
+                                            }else if(contents[i]=='1'){
+                                                n = 1;
+                                            }else if(contents[i]=='2'){
+                                                n = 2;
+                                            }else if(contents[i]=='3'){
+                                                n = 3;
+                                            }else if(contents[i]=='4'){
+                                                n = 4;
+                                            }else if(contents[i]=='5'){
+                                                n = 5;
+                                            }else if(contents[i]=='6'){
+                                                n = 6;
+                                            }else if(contents[i]=='7'){
+                                                n = 7;
+                                            }else if(contents[i]=='8'){
+                                                n = 8;
+                                            }else if(contents[i]=='9'){
+                                                n = 9;
+                                            }else if(contents[i]==','){
+                                                lookForVar = false;
+                                                nd = 1;
+                                                continue;
+                                            }else if(contents[i]=='/' || contents[i]=='B' || contents[i]=='S'){
+                                                
+                                            }else{
+                                                continue;
+                                            }
+
+                                            if(varToSet=='x'){
+                                                w*=nd;
+                                                w+=n;
+                                                nd=10;
+                                                //alert("Width: "+w);
+                                            }
+
+                                            if(varToSet=='y'){
+                                                h*=nd;
+                                                h+=n;
+                                                nd=10;
+                                                //alert("Height: "+h);
+                                            }
+
+                                            if(varToSet=='e'){
+                                                ruleString += contents[i];
+                                            }
+
+                                            n = -1;
+                                        }
+
+                                    }else{
+                                        if(contents[i]=='b' || contents[i]=='o' || contents[i]=='$'){ //b=dead o=live
+                                            if(newGrid == null || newGrid == undefined){
+                                                newGrid = createArray(w, h);
+                                                for(var l=0;l<w;l++){
+                                                    for(var m=0;m<h;m++){
+                                                        newGrid[l][m] = false;
+                                                    }
+                                                }
+                                                //alert("created grid of size: "+w+", "+h);
+                                            }
+                                            if(repeats==0){
+                                                repeats = 1;
+                                            }
+                                            while(repeats>0){
+                                                if(contents[i]=='b' || contents[i]=='o'){
+                                                    if(x>w-1 || y>h-1){
+                                                        alert("Out of range set: "+x+", "+y+"   repeats left: "+repeats);
+                                                    }
+                                                    newGrid[x][y] = contents[i]=='o';
+                                                    x++;
+                                                }else{
+                                                    x = 0;
+                                                    y++;
+                                                }
+                                                repeats--;
+                                            }
+                                            repeats = 0;
+                                            nd = 1;
+                                        }else if(contents[i]=='0'){
+                                            n = 0;
+                                        }else if(contents[i]=='1'){
+                                            n = 1;
+                                        }else if(contents[i]=='2'){
+                                            n = 2;
+                                        }else if(contents[i]=='3'){
+                                            n = 3;
+                                        }else if(contents[i]=='4'){
+                                            n = 4;
+                                        }else if(contents[i]=='5'){
+                                            n = 5;
+                                        }else if(contents[i]=='6'){
+                                            n = 6;
+                                        }else if(contents[i]=='7'){
+                                            n = 7;
+                                        }else if(contents[i]=='8'){
+                                            n = 8;
+                                        }else if(contents[i]=='9'){
+                                            n = 9;
+                                        }
+
+                                        if(n!=-1){
+                                            //alert("before\nrepeats: "+repeats+"  nd: "+nd+"  n: "+n);
+                                            repeats*=nd;
+                                            repeats+=n;
+                                            if(nd==1)nd=10;
+                                            //alert("after\nrepeats: "+repeats+"  nd: "+nd+"  n: "+n);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if(ruleString){
+                                //alert(ruleString);
+                                applyrRulePreset(ruleString);
+                            }
+
+                            if(newGrid == null){
+                                throw "Size not specified correctly.";
+                            }
+
+                            for(var i=0;i<w;i++){
+                                for(var j=0;j<h;j++){
+                                    if(i>=0 && j>=0 && i<gridSize.width && j<gridSize.height){
+                                        grid[i][j] = newGrid[i][j];
+                                        tempGrid[i][j] = false;
+                                        updateGrid[i][j] = true;
+                                    }else{
+                                        outOfBounds = true;
+                                    }
+                                }
+                            }
+
+                            if(outOfBounds){
+                                alert("Some data was cut off due to the window being too small.");
+                            }
+
+                            redraw();
+                            
+                        }catch(e){
+                            alert(e);
+                            alert("Failed to read file.\n\nEnsure the file is formatted to follow the rules of an RLE file. More information:\n\nhttp://www.conwaylife.com/wiki/Run_Length_Encoded");
+                        }
+                        inputFileLoad.value = "";
+                    }
+                    r.readAsText(f);
+
+                }
+
+
+            }
+
+
+        </script>
+
+    </head>
+
+    <body onload="init()">
+
+        <canvas id="canvasMain" width="400" height="400">Canvas not supported. You gotta use a newer browser. :P</canvas>
+        <br/>
+        
+        <table>
+            <tr>
+                <td valign="top">
+        
+                    <button onclick="clearGrid()">Clear</button>
+                    <button onclick="nextStep()">Next</button>
+                    <button onclick="playPause()" id="buttonPlayPause" style="width:60px">Play</button>
+                    <span>Fps:</span>
+                    <button onclick="changeFps(-1)" style="width:24px">-</button>
+                    <input type="text" id="inputTextFps" onchange="updateInterval()"  style="width:30px"/>
+                    <button onclick="changeFps(1)" style="width:24px">+</button>
+
+                    <span id="pStepText" style="float:right;margin-right:1em;"></span>
+
+                    <span>WASD shift</span>
+                    <button onclick="flip(true, false)">&lt; Flip &gt;</button>
+                    <button onclick="flip(false, true)">^ Flip v</button>
+                    <button onclick="changeCellSize(1)">+</button>
+                    <button onclick="changeCellSize(-1)">-</button>
+                    <br />
+                    <button onclick="saveFile()">Save File</button>
+                    <input type="file" id="inputFileLoad" value="" />
+                    <button id="rulesShowHideButton" onclick="toggleRuleTable()">Rules</button>
+                    <br />
+                </td>
+                <td>
+                    <table style="text-align:center" id="ruleTable">
+                        <tr>
+                            <td>Neighbors</td>
+                            <td>0</td>
+                            <td>1</td>
+                            <td>2</td>
+                            <td>3</td>
+                            <td>4</td>
+                            <td>5</td>
+                            <td>6</td>
+                            <td>7</td>
+                            <td>8</td>
+                            <td colspan="3">Presets</td>
+                        </tr>
+                        <tr>
+                            <td>Birth</td>
+                            <td><input type="checkbox" id="b0" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b1" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b2" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b3" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b4" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b5" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b6" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b7" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="b8" onclick="updateRules()"></input></td>
+                            <td><button onclick='applyrRulePreset("B3/S23")' title="B3/S23">Life</button></td>
+                            <td><button onclick='applyrRulePreset("B35678/S5678")' title="B35678/S5678">Diamoeba</button></td>
+                            <td><button onclick='applyrRulePreset("B3/S012345678")' title="B3/S012345678">Life Without Death</button></td>
+                            <td><button onclick='applyrRulePreset("B3678/S34678")' title="B3678/S34678">Day and Night</button></td>
+                        </tr>
+                        <tr>
+                            <td>Survive</td>
+                            <td><input type="checkbox" id="s0" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s1" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s2" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s3" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s4" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s5" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s6" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s7" onclick="updateRules()"></input></td>
+                            <td><input type="checkbox" id="s8" onclick="updateRules()"></input></td>
+                            <td><button onclick='applyrRulePreset("B2/S")' title="B2/S">Seeds</button></td>
+                            <td><button onclick='applyrRulePreset("B1357/S1357")' title="B1357/S1357">Replicator</button></td>
+                            <td><button onclick='applyrRulePreset("B36/S23")' title="B36/S23">HighLife</button></td>
+                            <td><button onclick='applyrRulePreset("B368/S245")' title="B368/S245">Morley</button></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+        </table
+
+    </body>
+
+</html>

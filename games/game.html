@@ -1,0 +1,717 @@
+<html>
+	<head>
+		<script type="text/javascript">
+			//unicode left=37 up=38 right=39 down=40 space=32
+			//i=73 j=74 k=75 l=76
+			
+            
+			if (true){
+				
+				//Buttons
+				var left=false;
+				var up=false;
+				var right=false;
+				var down=false;
+				var space=false;
+				
+				//settings
+				var normalWalkSpeed=2;
+				var normalJumpSpeed=3;
+				var normalJumpHoldSpeed=.1;
+				var normalTerminalVelocity=8;
+				
+				var waterWalkSpeed=1.2;
+				var waterJumpSpeed=1.5;
+				var waterJumpHoldSpeed=.0;
+				var waterTerminalVelocity=4;
+                
+				var drownRate=.8;
+				var airRestoreRate=5;
+                
+                var springSpeed=8;
+				
+				//variables
+				var walkSpeed=normalWalkSpeed;
+				var jumpSpeed=normalJumpSpeed;
+				var jumpHoldSpeed=normalJumpHoldSpeed;
+				var terminalVelocity=normalTerminalVelocity;
+				var gravityPower=.2;
+                
+                var onScreenMessage1="";
+                var onScreenMessage2="";
+                var timerValue=-1;
+                var timerType=0;
+                var movementLocked=false;
+				
+				var currentLevel=0;
+				var x=0;
+				var y=0;
+				var w=6;
+				var h=6;
+				var spd=0;
+				var grav=0;
+				var vspd=0;
+				var hspd=0;
+				var breath=100;
+				var startx=0;
+				var starty=0;
+                var face=1;
+                
+                //tele vars
+                var teleOutX=[10];
+                var teleOutY=[10];
+				
+				//grid initialization
+				var grid=[40];
+				for (var i=0;i<40;i++){
+					grid[i]=[40];
+				}
+				
+				for (var i=0;i<40;i++){
+					for (var j=0;j<40;j++){
+						grid[i][j]=0;
+					}
+				}
+				
+				
+				var solidsGrid=[40];
+				for (var i=0;i<40;i++){
+					solidsGrid[i]=[40];
+				}
+				
+				for (var i=0;i<40;i++){
+					for (var j=0;j<40;j++){
+						solidsGrid[i][j]=0;
+					}
+				}
+				
+				//game start stuff
+				levelStart();
+				var paused=false;
+				setTimeout("update();",50);
+				
+				document.onkeydown=keydown;
+				document.onkeyup=keyup;
+			}
+			
+			//press key control
+			function keydown(e){
+				var ucode=(window.event) ? event.keyCode : e.keyCode;
+				if((ucode==37)||(ucode==74)||(ucode==65)){
+					left=true;
+				}
+				else if((ucode==38)||(ucode==73)||(ucode==87)){
+					up=true;
+				}
+				else if((ucode==39)||(ucode==76)||(ucode==68)){
+					right=true;
+				}
+				else if((ucode==40)||(ucode==75)||(ucode==83)){
+					down=true;
+				}
+				else if(ucode==32){
+					space=true;
+				}
+			}
+			
+			//release key control
+			function keyup(e){
+				var ucode=(window.event) ? event.keyCode : e.keyCode;
+				if((ucode==37)||(ucode==74)||(ucode==65)){
+					left=false;
+				}
+				else if((ucode==38)||(ucode==73)||(ucode==87)){
+					up=false;
+				}
+				else if((ucode==39)||(ucode==76)||(ucode==68)){
+					right=false;
+				}
+				else if((ucode==40)||(ucode==75)||(ucode==83)){
+					down=false;
+				}
+				else if(ucode==80){
+					space=false;
+					paused=!paused;
+				}
+			}
+			
+			//previous level button control
+			function prevLevel(){
+				currentLevel=Math.max(0,currentLevel-1);
+				levelStart()
+			}
+			//next level button control
+			function nextLevel(){
+				currentLevel++;
+				levelStart()
+			}
+            
+            function tanslateLevel(l,w,h){
+                
+                // =blank
+				//B=wall
+				//L=lava
+                //Z=zapper
+				//E=end
+				//W=water
+				//J=jump-through platform
+                //S=spring
+                //X=player
+                
+                //a=tele 1 in
+                //1=tele 1 out
+                //b=tele 2 in
+                //2=tele 2 out
+                //c=tele 3 in
+                //3=tele 3 out
+                //d=tele 4 in
+                //4=tele 4 out
+                
+                sx=0;sy=0;
+                
+                var g=[w]
+                for (var i=0;i<w;i++){
+					g[i]=[w];
+				}
+                
+                for (var i=0;i<w;i++){
+                    for (var j=0;j<h;j++){
+                        switch(l[i].substring(j,j+1)){
+                            case "B":k=1;break;
+                            case "L":k=2;break;
+                            case "E":k=3;break;
+                            case "W":k=4;break;
+                            case "J":k=5;break;
+                            case "Z":k=6;break;
+                            case "S":k=7;break;
+                            case "X":k=0;sx=j*10;sy=i*10;break;
+                            
+                            case "a":k=100;break;
+                            case "1":k=101;teleOutX[0]=j;teleOutY[0]=i;break;
+                            case "b":k=102;break;
+                            case "2":k=103;teleOutX[1]=j;teleOutY[1]=i;break;
+                            case "c":k=104;break;
+                            case "3":k=105;teleOutX[2]=j;teleOutY[2]=i;break;
+                            case "d":k=106;break;
+                            case "4":k=107;teleOutX[3]=j;teleOutY[3]=i;break;
+                            case "e":k=108;break;
+                            case "5":k=109;teleOutX[4]=j;teleOutY[4]=i;break;
+                            case "f":k=110;break;
+                            case "6":k=111;teleOutX[5]=j;teleOutY[5]=i;break;
+                            case "g":k=112;break;
+                            case "7":k=113;teleOutX[6]=j;teleOutY[6]=i;break;
+                            case "h":k=114;break;
+                            case "8":k=115;teleOutX[7]=j;teleOutY[7]=i;break;
+                            case "i":k=116;break;
+                            case "9":k=117;teleOutX[8]=j;teleOutY[8]=i;break;
+                            case "j":k=118;break;
+                            case "0":k=119;teleOutX[9]=j;teleOutY[9]=i;break;
+                            
+                            default:k=0;
+                        }
+                        g[j][i]=k;
+                        
+                    }
+                }
+                
+                return [g,sx,sy];
+            }
+			
+			//update every 20 milliseconds
+			function update(){
+                try{
+                    if(paused==false){
+                        
+                        //initiate drawing
+                        var maincanvas=document.getElementById("mainCanvas");
+                        if(maincanvas.getContext){var c=maincanvas.getContext('2d');}
+                        
+                        
+                        //clear all
+                        c.clearRect(0,0,400,400);
+                        c.beginPath()
+                        
+                        //draw background
+                        c.fillStyle="#606060";
+                        c.fillRect(0,0,400,400);
+                        
+                        
+                        //0=blank
+                        //1=wall
+                        //2=lava
+                        //3=end
+                        //4=water
+                        //5=jump-through platform
+                        //6=zapper
+                        //7=spring
+                        
+                        //100=tele 1 in
+                        //101=tele 1 out
+                        //102=tele 1 in
+                        //103=tele 1 out
+                        //104=tele 1 in
+                        //105=tele 1 out
+                        //106=tele 1 in
+                        //107=tele 1 out
+                        //...
+                        
+                        
+                        //draw blocks
+                        for (var i=0;i<40;i++){
+                            for (var j=0;j<40;j++){
+                                //draw wall
+                                if (grid[i][j]==1){
+                                    c.fillStyle="#000000";
+                                    c.fillRect((i*10)-5,(j*10)-5,10,10);
+                                }
+                                //draw lava
+                                else if (grid[i][j]==2){
+                                    c.fillStyle="#ff0000";
+                                    if (!solidsGrid[i][j-1]){
+                                        c.fillRect((i*10)-5,(j*10)-3,10,10);
+                                    }
+                                    else{
+                                        c.fillRect((i*10)-5,(j*10)-5,10,12);
+                                    }
+                                }
+                                //draw zapper
+                                else if (grid[i][j]==6){
+                                    c.fillStyle="#00ff00";
+                                    c.fillRect((i*10)-5,(j*10)-5,10,10);
+                                    c.fillStyle="#ffffff";
+                                    c.fillRect((Math.random()*10)+(i*10)-6,(Math.random()*10)+(j*10)-6,Math.random()*4,Math.random()*4);
+                                    c.fillRect((Math.random()*10)+(i*10)-6,(Math.random()*10)+(j*10)-6,Math.random()*4,Math.random()*4);
+                                    c.fillRect((Math.random()*10)+(i*10)-6,(Math.random()*10)+(j*10)-6,Math.random()*4,Math.random()*4);
+                                    c.fillRect((Math.random()*10)+(i*10)-6,(Math.random()*10)+(j*10)-6,Math.random()*4,Math.random()*4);
+                                }
+                                //draw end
+                                else if (grid[i][j]==3){
+                                    c.fillStyle="#00ff00";
+                                    c.fillRect((i*10)-3,(j*10)-3,6,6);
+                                }
+                                //draw water
+                                else if (grid[i][j]==4){
+                                        c.fillStyle="#0000ff";
+                                    if (!solidsGrid[i][j-1]){
+                                        c.fillRect((i*10)-5,(j*10)-3,10,10);
+                                    }
+                                    else{
+                                        c.fillRect((i*10)-5,(j*10)-5,10,12);
+                                    }
+                                }
+                                //draw platform
+                                else if (grid[i][j]==5){
+                                    c.fillStyle="#000000";
+                                    c.fillRect((i*10)-5,(j*10)-5,10,2);
+                                }
+                                //draw spring
+                                else if (grid[i][j]==7){
+                                    c.fillStyle="#000000";
+                                    c.moveTo((i*10)-5,(j*10)-5);  
+                                    c.lineTo((i*10)+5,(j*10)+5);
+                                    
+                                    c.moveTo((i*10)+5,(j*10)-5);  
+                                    c.lineTo((i*10)-5,(j*10)+5);
+                                    
+                                    c.fillStyle="#0000ff";
+                                    c.fillRect((i*10)-5,(j*10)-5,10,2);
+                                    c.fillRect((i*10)-5,(j*10)+3,10,2);
+                                }
+                                //draw tele
+                                else if ((grid[i][j]>=100)&&(grid[i][j]<=119)){
+                                    c.fillStyle="#8800ff";
+                                    c.fillRect((i*10)-3,(j*10)-3,6,6);
+                                }
+                            }
+                        }
+                        
+                        //draw you
+                        c.fillStyle="#ffffff";
+                        if(placeHas(x,y,4)){
+                            c.fillStyle="#8888ff";
+                        }
+                        c.fillRect(x-w/2,(y-h/2)-1,w,h);
+                        c.fillStyle="#000000";
+                        c.fillRect(x+face-1,y-2,2,2);
+                        if (left) face=-1;
+                        if (right) face=1;
+                        
+                        //draw breath bar
+                        if((placeHas(x,y,4))||(breath<100)){
+                            c.fillStyle="#aaaaaa";
+                            c.fillRect(x-11,y-13,22,6);
+                            c.fillStyle="#888888";
+                            c.fillRect(x-10,y-12,20,4);
+                            c.fillStyle="#4444ff";
+                            c.fillRect(x-10,y-12,breath/5,4);
+                        }
+                        
+                        //draw on screen message
+                        if (onScreenMessage1!=""){
+                            c.fillStyle="ffffff";
+                            c.font="16pt Calibri";
+                            c.textAlign="center";
+                            c.fillText(onScreenMessage1, 195, 150);
+                            c.fillText(onScreenMessage2, 195, 170);
+                        }
+                        
+                        
+                        c.fill();
+                        c.stroke();
+                        
+                        
+                        //timer control
+                        if (timerValue>-1){
+                            timerValue-=1
+                            if (timerValue==-1){
+                                if (timerType==1){ currentLevel=0; levelStart();}
+                                if (timerType==0){ onScreenMessage1="";onScreenMessage2="";}
+                            }
+                        }
+                        
+                        //movement control
+                        if (!movementLocked){
+                            y=Math.round(y);
+                        
+                            //teleport control
+                            if((whatPlaceHas(x,y)>=100)&&(whatPlaceHas(x,y)<=119)){
+                                var i=true;
+                                var k=0;
+                                switch(whatPlaceHas(x,y)){
+                                    case 100:k=0;break;
+                                    case 102:k=1;break;
+                                    case 104:k=2;break;
+                                    case 106:k=3;break;
+                                    case 108:k=4;break;
+                                    case 110:k=5;break;
+                                    case 112:k=6;break;
+                                    case 114:k=7;break;
+                                    case 116:k=8;break;
+                                    case 118:k=9;break;
+                                    default:i=false;
+                                }
+                                if (i){
+                                    x=teleOutX[k]*10;
+                                    y=teleOutY[k]*10;
+                                }
+                            }
+                            
+                            //water control
+                            if(placeHas(x,y,4)){
+                                walkSpeed=waterWalkSpeed;
+                                jumpSpeed=waterJumpSpeed;
+                                jumpHoldSpeed=waterJumpHoldSpeed;
+                                terminalVelocity=waterTerminalVelocity;
+                                
+                                breath-=drownRate;
+                                
+                            }
+                            else{
+                                walkSpeed=normalWalkSpeed;
+                                jumpSpeed=normalJumpSpeed;
+                                jumpHoldSpeed=normalJumpHoldSpeed;
+                                terminalVelocity=normalTerminalVelocity;
+                                
+                                breath=Math.min(breath+airRestoreRate,100);
+                            }
+                            
+                            if (breath<=0){
+                                die("You drouned!");
+                            }
+                            
+                            //out of the world control
+                            if(y>390||y<0||x>390||x<0){
+                                die("You fell out of the world!!!");
+                            }
+                            
+                            //lava control
+                            if(placeHas(x,y,2)){
+                                die("You melted!");
+                            }
+                            
+                            //zapper control
+                            if(placeHas(x,y,6)){
+                                die("You got electrocuted!");
+                            }
+                            
+                            //spring control
+                            if(placeHas(x,y+4,7)){
+                                vspd=-springSpeed
+                            }
+                            
+                            //end control
+                            if(placeHas(x,y,3)){
+                                currentLevel++;
+                                levelStart();
+                            }
+                            
+                            //jump control
+                            if(up==true){
+                                if((placeSolid(x,y+4))||(placeHas(x,y+4,5))){
+                                    vspd=-jumpSpeed;
+                                }
+                                else{
+                                    vspd-=jumpHoldSpeed
+                                }
+                                if(placeHas(x,y,4)){
+                                    vspd=-jumpSpeed;
+                                }
+                            }
+                            
+                            //head collide control
+                            if ((placeSolid(x,y-4))&&(vspd<0)){
+                                vspd=0;
+                            }
+                            
+                            //gravity and feet collide control
+                            if ((!placeSolid(x,y+vspd+2))&&((!placeHas(x,y+vspd+2,5)))){
+                                vspd=Math.min(vspd+gravityPower,terminalVelocity);
+                            }
+                            else if (vspd>0){
+                                vspd=0;
+                            }
+                            
+                            y+=vspd;
+                            
+                            //walk control
+                            for(var i=0;i<walkSpeed;i++){
+                                if (!placeSolid(x-walkSpeed-1,y)){
+                                    if(left==true){
+                                        x-=1;
+                                    }	  
+                                }
+                                
+                                if (!placeSolid(x+walkSpeed+1,y)){
+                                    if(right==true){
+                                        x+=1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    setTimeout("update();",20);
+                }catch(err){
+                    die("ERROR: "+err)
+                }
+            }
+			
+			function placeHas(xx,yy,tt){
+				return (grid[Math.round((xx)/10)][Math.round((yy)/10)]==tt);
+			}
+			function whatPlaceHas(xx,yy){
+				return (grid[Math.round((xx)/10)][Math.round((yy)/10)]);
+			}
+			function placeSolid(xx,yy){
+				return (solidsGrid[Math.round((xx)/10)][Math.round((yy)/10)]==1);
+			}
+            
+            function die(m){
+                onScreenMessage1="GAME OVER";
+                onScreenMessage2=m;
+                timerType=1;
+                timerValue=60;
+                movementLocked=true;
+            }
+			
+			function levelStart(){
+                
+                onScreenMessage1="";
+                onScreenMessage2="";
+                timerType=0;
+                timerValue=40;
+                movementLocked=false;
+                face=1;
+                stringGrid="";
+				
+				for (var i=0;i<40;i++){
+					for (var j=0;j<40;j++){
+						grid[i][j]=0;
+					}
+				}
+				
+				// =blank
+				//B=wall
+				//L=lava
+                //Z=zapper
+				//E=end
+				//W=water
+				//J=jump-through platform
+                //X=player
+                
+                //a=tele 1 in
+                //1=tele 1 out
+                //b=tele 2 in
+                //2=tele 2 out
+                //c=tele 3 in
+                //3=tele 3 out
+                //d=tele 4 in
+                //4=tele 4 out
+                //...
+				
+				if (currentLevel==0){
+                    onScreenMessage1="Level 1";
+                    stringGrid=[
+                                 "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                                 "B    BBB    BBB                  1     B",
+                                 "B    BbB    BBB                        B",
+                                 "BWWWWBWBWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWB",
+                                 "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                                 "B                                      B",
+                                 "B     X                              c B",
+                                 "B   JJJJ                       JJJJJJJJB",
+                                 "B              JJJJ                    B",
+                                 "B                      JJJJ            B",
+                                 "B     JJJJ                             B",
+                                 "BLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLB",
+                                 "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                                 "B         BBBBBBBBBB                  3B",
+                                 "B           BBBBBBBBWWWWWWWWWWWWWWWWWBBB",
+                                 "B             BBBBBBWWWWWWWWWWWWWWWWWBBB",
+                                 "B               BBBBBBBBBBWWWWWWWWWWWBBB",
+                                 "Ba                BBBBBBBBWWBBBBBBBBBBBB",
+                                 "BBBBLLLLLLLBB          BBBWWBBBBBBBBBBBB",
+                                 "BBBBLLLLLLLBBBBBBBBWWWWBBBWWBBBBBBBBBBBB",
+                                 "BBBBLLLLLLLBBBBBBBBBBWWWWWWWBBBBBBBBBBBB",
+                                 "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                                 "B                                      B",
+                                 "B                   2                  B",
+                                 "B                                      B",
+                                 "B                                      B",
+                                 "B                   b                  B",
+                                 "B                                      B",
+                                 "B                                      B",
+                                 "BWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWWWWWBBBBBBWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWWWWWB E  BWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWWWWWBJJJJBWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWWWWWBWWWWBWWWWWWWWWWWWWWWWWB",
+                                 "BWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWB",
+                                 "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"]
+				}
+				if (currentLevel==1){
+                    onScreenMessage1="Level 2";
+                    stringGrid=[
+                                "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                      B",
+                                "B                                    BBB",
+                                "B    WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+                                "BBB  WBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+                                "B    W                                 B",
+                                "B   BW                B        B       B",
+                                "B   ZW          B     Z        Z       B",
+                                "B    W  B       Z        B             B",
+                                "B    W  Z          B     Z             B",
+                                "B    W     B       Z  B     B          B",
+                                "B    W     Z          Z     Z   B      B",
+                                "B    W                          Z      B",
+                                "BBB  W                                 B",
+                                "WWWWWWBBBZZZZZZZZZZZZZZZZZZZZZZZZZZZZ  B",
+                                "BBBBBBB                                B",
+                                "B                                      B",
+                                "B                                     SB",
+                                "B             ZZZZ                  JJJB",
+                                "B X           ZZZZ                     B",
+                                "B             ZZZZ                     B",
+                                "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"]
+				}
+				if (currentLevel==2){
+                    
+				}
+				if (currentLevel==3){
+                    
+				}
+				if (currentLevel==4){
+					
+				}
+				if (currentLevel==5){
+                    
+				}
+                
+                i=tanslateLevel(stringGrid,40,40);
+                grid=i[0]
+                startx=i[1]
+                starty=i[2]
+                
+				for (var i=0;i<40;i++){
+					for (var j=0;j<40;j++){
+						if (grid[i][j]==1){
+							solidsGrid[i][j]=1;
+						}
+						else{
+							solidsGrid[i][j]=0;
+						}
+					}
+				}
+				
+				x=startx;
+				y=starty;
+				breath=100;
+			}
+			
+			</script>
+	</head>
+	<body>
+		<table>
+            <tr>
+                <td colspan="2">
+                    <h1>The Adventures of the one-eyed white blob!</h1>
+                </td>
+            </tr>
+			<tr>
+				<td>
+					<canvas id="mainCanvas" width="390" height="390">
+						<p><b>Your browser doesn't support canvas. Try Google Chrome, Mosila Firefox, or Safari.</p></b>
+					</canvas>
+					<br />
+					<button onclick="prevLevel()" type="button">previous level</button>
+					<button onclick="nextLevel()" type="button">next level</button>
+				</td>
+				<td rowspan="2">
+					<p>
+                    <h3>Controls</h3>
+                    Use the Left and Right arrow keys to move and the Up key to jump. Alternatively you could use the WASD or IJKL keys<br /><br />
+                    <h3>Object</h3>
+                    Your goal is to get to the green square without dying.<br /><br />
+                    <h3>Information</h3>
+					This game is not fully functional yet and there are some glitches to iron out but this is what I have so far.<br /><br />After the last level there is just a blank gray background with your character, this signifies the end of the game.<br /><br />
+                    <h3>Version History</h3>
+                    0.01: added gravity<br />
+                    0.02: added jumping<br />
+                    0.03: added lava<br />
+                    0.04: added end of level object<br />
+                    0.05: added water and drowning<br />
+                    0.06: added jump-through platform<br />
+                    0.07: added larger level support<br />
+                    0.08: improved the way the levels where created and... deleted all levels :(<br />
+                    0.09: added teleporters<br />
+                    0.10: added on screen messages, eye on player, game title, and updated lava, background color, and breath bar<br />
+                    0.11: added zapper blocks<br />
+                    0.12: added a spring<br />
+					</p>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>
