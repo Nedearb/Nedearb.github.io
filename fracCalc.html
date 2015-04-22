@@ -1,0 +1,172 @@
+<html>
+    <head>
+        <script>
+            
+            var textBoxInputATop;
+            var textBoxInputABottom;
+            var textBoxInputBTop;
+            var textBoxInputBBottom;
+            var textBoxOutputTop;
+            var textBoxOutputBottom;
+            var selectOperator;
+            
+            function init(){
+                textBoxInputATop = document.getElementById("inATop");
+                textBoxInputABottom = document.getElementById("inABottom");
+                textBoxInputBTop = document.getElementById("inBTop");
+                textBoxInputBBottom = document.getElementById("inBBottom");
+                textBoxOutputTop = document.getElementById("outTop");
+                textBoxOutputBottom = document.getElementById("outBottom");
+                selectOperator = document.getElementById("op");
+            }
+            
+            function findLCD(a, b){
+                var max = Math.max(a, b);
+                for(var i=1;i<=a;i++){
+                    for(var j=1;j<=b;j++){
+                        if(b*i == a*j){
+                            return {topAMultiplier:j, topBMultiplier:i, bottom:b*i};
+                        }
+                    }
+                }
+                return {topAMultiplier:b, topBMultiplier:a, bottom:a*b};
+            }
+            
+            function findGCD(a, b){
+                while(b > 0){
+                    var rem = a % b;
+                    a = b;
+                    b = rem;
+                }
+                return a;
+            }
+            
+            function simplify(frac){
+                var gcd = findGCD(frac.top, frac.bottom);
+                return {top:(frac.top / gcd), bottom:(frac.bottom / gcd)};
+            }
+            
+            function calc(){
+                var fracA = {top:textBoxInputATop.value, bottom:textBoxInputABottom.value}
+                var fracB = {top:textBoxInputBTop.value, bottom:textBoxInputBBottom.value}
+                
+                var op = selectOperator.options[selectOperator.selectedIndex].value;
+                
+                if(op == "multiply"){
+                    var fracC = {top:0, bottom:0};
+                    fracC.top = fracA.top * fracB.top;
+                    fracC.bottom = fracA.bottom * fracB.bottom;
+                    var simplified = simplify(fracC);
+                    textBoxOutputTop.value = simplified.top;
+                    textBoxOutputBottom.value = simplified.bottom;
+                    return;
+                }else if(op == "divide"){
+                    var fracC = {top:0, bottom:0};
+                    fracC.top = fracA.top * fracB.bottom;
+                    fracC.bottom = fracA.bottom * fracB.top;
+                    var simplified = simplify(fracC);
+                    textBoxOutputTop.value = simplified.top;
+                    textBoxOutputBottom.value = simplified.bottom;
+                    return;
+                }
+                
+                
+                var lcdInfo = findLCD(fracA.bottom, fracB.bottom);
+                var aTop = (fracA.top * lcdInfo.topAMultiplier);
+                var bTop = (fracB.top * lcdInfo.topBMultiplier);
+                
+                console.log(lcdInfo);
+                console.log(aTop, bTop);
+                
+                if(op == "add"){
+                    textBoxOutputTop.value = aTop + bTop;
+                    textBoxOutputBottom.value = lcdInfo.bottom;
+                    return;
+                }else if(op == "subtract"){
+                    textBoxOutputTop.value = aTop - bTop;
+                    textBoxOutputBottom.value = lcdInfo.bottom;
+                    return;
+                }
+            }
+            
+        </script>
+    </head>
+    <body onload="init()">
+        <div>
+            <table>
+                <tr>
+                    <td>
+                        <input type="number" id="inATop" size="3" tabindex=1>
+                    </td>
+                    <td>
+                    </td>
+                    <td>
+                        <input type="number" id="inBTop" size="3" tabindex=3>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <hr size="1">
+                    </td>
+                    <td>
+                        <select id="op">
+                            <option value="add">
+                                + Add
+                            </option>
+                            <option value="subtract">
+                                - Subtract
+                            </option>
+                            <option value="multiply">
+                                &times; Multiply
+                            </option>
+                            <option value="divide">
+                                &divide; Divide
+                            </option>
+                        </select>
+                    </td>
+                    <td>
+                        <hr size="1">
+                    </td>
+                    <td>
+                        <button onclick="calc()">
+                            Calculate
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="number" id="inABottom" size="3" tabindex=2>
+                    </td>
+                    <td>
+                    </td>
+                    <td>
+                        <input type="number" id="inBBottom" size="3" tabindex=4>
+                    </td>
+                </tr>
+            </table>
+            <br/>
+            <br/>
+            <br/>
+            <table>
+                <tr>
+                    <td>
+                        <input type="number" id="outTop" size="3" tabindex=5>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <hr size="1">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <input type="number" id="outBottom" size="3" tabindex=6>
+                    </td>
+                </tr>
+            </table>
+            <br/>
+            <br/>
+            
+        </div>
+    </body>
+</html>
