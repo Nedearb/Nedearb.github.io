@@ -1,0 +1,196 @@
+<html>
+    <head>
+        <script type="text/javascript">
+            //left=37 up=38 right=39 down=40
+            var left=false;
+            var up=false;
+            var right=false;
+            var down=false;
+            var space=false;
+
+            var accspd=2;
+            var maxspd=10;
+            var friction=.1;
+            var turnspd=8;
+            var shotnormspd=10;
+
+            var x=400;
+            var y=250;
+            var spd=0;
+            var dir=0;
+            var shotx=0;
+            var shoty=0;
+            var shotspd=0;
+            var shotdir=0;
+            var shotactive=false;
+            var paused=false;
+            setTimeout("update();",50);
+            
+            var ansteroidList = [createAsteroid()];
+            
+            document.onkeydown = keydown;
+            document.onkeyup = keyup;
+                                 
+            function createAsteroid(){
+                
+                var points = [];
+                
+                var n = (Math.random()*5)+5;
+                
+                var s = 10;
+                var s2 = s/2;
+                
+                for(var i=0;i<n;i++){
+                    points.push({x:((Math.random()*s2)-s), y:((Math.random()*s2)-s)});
+                }
+                
+                return {pos:{x:20, y:20}, points:points};
+            }
+            
+            function keydown(e){
+                var ucode=(window.event) ? event.keyCode : e.keyCode;
+                //var ucode=e.keyCode? e.keyCode : e.charCode
+                if(ucode==37){
+                    left=true;
+                }
+                else if(ucode==38){
+                    up=true;
+                }
+                else if(ucode==39){
+                    right=true;
+                }
+                else if(ucode==40){
+                    down=true;
+                }
+                else if(ucode==32){
+                    space=true;
+                }
+            }
+            function keyup(e){
+                var ucode=(window.event) ? event.keyCode : e.keyCode;
+                //var ucode=e.keyCode? e.keyCode : e.charCode
+                if(ucode==37){
+                    left=false;
+                }
+                else if(ucode==38){
+                    up=false;
+                }
+                else if(ucode==39){
+                    right=false;
+                }
+                else if(ucode==40){
+                    down=false;
+                }
+                else if(ucode==32){
+                    space=false;
+                }
+                else if(ucode==80){
+                    paused=!paused;
+                }
+            }
+
+            function draw(){
+                var maincanvas=document.getElementById("main_canvas");
+                if(maincanvas.getContext){var c=maincanvas.getContext('2d');}
+
+                c.fillStyle="#000000";
+                c.fillRect(0,0,800,500);
+
+                c.fillStyle="#ffffff";
+                c.strokeRect(0,0,800,500);
+                if(shotactive){c.fillRect(shotx-1,shoty-1,2,2);}
+
+                c.beginPath();
+                c.fillStyle="#ffffff";
+                c.moveTo(x+lendir_x(10,dir),y+lendir_y(10,dir));
+                c.lineTo(x+lendir_x(10,to_360_range(dir+135)),y+lendir_y(10,to_360_range(dir+135)));
+                c.lineTo(x+lendir_x(3,to_360_range(dir+180)),y+lendir_y(3,to_360_range(dir+180)));
+                c.lineTo(x+lendir_x(10,to_360_range(dir+225)),y+lendir_y(10,to_360_range(dir+225)));
+                c.lineTo(x+lendir_x(10,dir),y+lendir_y(10,dir));
+                c.closePath();
+
+                c.fill();
+                c.stroke();
+                
+                for(var i=0;i<ansteroidList.length;i++){
+                    var a = ansteroidList[i];
+                    c.beginPath();
+                    c.moveTo(a.pos.x+a.points[0].x, a.pos.y+a.points[0].y);
+                    for(var j=0;j<a.points.length;j++){
+                        var p = a.points[j];
+                        c.lineTo(a.pos.x+p.x, a.pos.y+p.y);
+                    }
+                    c.lineTo(a.pos.x+a.points[0].x, a.pos.y+a.points[0].y);
+                    c.closePath();
+
+                    c.fill();
+                    c.stroke();
+                }
+
+                c.fill();
+                c.stroke();
+
+            }
+
+            function update(){
+                if(paused==false){
+                    draw();
+                    if(left==true){dir-=turnspd;}
+                    if(right==true){dir+=turnspd;}
+                    if(up==true){if(spd<maxspd){spd+=accspd;}}
+                    if(down==true){if(spd>-maxspd){spd-=accspd;}}
+                    if(space==true){shoot();}
+                    dir=to_360_range(dir)
+                    if(spd>0){spd-=friction;}
+                    if(spd<0){spd+=friction;}
+                    x+=lendir_x(spd,dir);
+                    y+=lendir_y(spd,dir);
+                    if(x<-20){x=819;}
+                    if(y<-20){y=519;}
+                    if(x>820){x=-19;}
+                    if(y>520){y=-19;}
+                    if(shotactive){
+                        shotx+=lendir_x(shotspd,shotdir);
+                        shoty+=lendir_y(shotspd,shotdir);
+                        if(outofarea(shotx,shoty,0,0,800,500)){
+                            shotactive=false;
+                        }
+                    }
+                }
+                setTimeout("update();",20);
+            }
+
+            function shoot(){
+                if(!shotactive){
+                    shotdir=dir;
+                    shotspd=shotnormspd;
+                    shotx=x;
+                    shoty=y;
+                    shotactive=true;
+                }
+            }
+
+            function outofarea(xx,yy,x1,y1,x2,y2){
+                return((xx<x1)||(xx>x2)||(yy<y1)||(yy>y2))
+            }
+            function to_360_range(d){
+                while(d>=360){d-=360;}
+                while(d<0){d+=360;}
+                return d;
+            }
+            function lendir_x(l,d){
+                return l*Math.cos(to_360_range(d)*(Math.PI/180));
+            }
+            function lendir_y(l,d){
+                return l*Math.sin(to_360_range(d)*(Math.PI/180));
+            }
+
+        </script>
+    </head>
+    <body>
+        <canvas id="main_canvas" width="800" height="500">
+            <p>Your browser doesn't support canvas.</p>
+        </canvas>
+        <p>Use the arrow keys to navigate and the space bar to shoot.</p>
+    </body>
+</html>
