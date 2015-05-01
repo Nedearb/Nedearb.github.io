@@ -5,7 +5,7 @@
         <style type="text/css">
             html { height: 100% }
             body { height: 100%; margin: 0; padding: 0 }
-            #map-canvas { height: 100% }
+            #map-canvas { height: calc(100% - 18px); }
         </style>
         <script type="text/javascript"
                 src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDeVGsk69YD24wCLh4wsnTa3ttDLew-Fo0">
@@ -13,6 +13,7 @@
         <script type="text/javascript">
             
             var map;
+            var paused = false;
             
             function initialize() {
                 var mapOptions = {
@@ -27,7 +28,18 @@
             google.maps.event.addDomListener(window, 'load', initialize);
             
             function update(){
+                if(!paused){
+                    next();
+                }
+            }
+            
+            function next(){
                 map.setCenter(new google.maps.LatLng((Math.random()*180)-90, (Math.random()*360)-180));
+            }
+            
+            function pausePlay(){
+                paused = !paused;
+                document.getElementById("pauseButton").value = paused?"Autoplay":"Stop Autoplay";
             }
             
             setInterval(update, 3000);
@@ -35,6 +47,10 @@
         </script>
     </head>
     <body>
+        <div>
+            <input type="button" value="Stop Autoplay" id="pauseButton" onclick="pausePlay()"></input>
+            <input type="button" value="Next" onclick="next()"></input>
+        </div>
         <div id="map-canvas"/>
     </body>
 </html>
