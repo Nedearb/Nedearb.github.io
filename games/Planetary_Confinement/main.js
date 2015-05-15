@@ -44,9 +44,11 @@ function setMatrixUniforms(){
 function initWebGL(canvas){
     gl = null;
     try{
-        gl = canvas.getContext("experimental-webgl");
-        gl.viewportWidth = canvas.width/zoom;
-        gl.viewportHeight = canvas.height/zoom;
+        gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if(gl){
+            gl.viewportWidth = canvas.width/zoom;
+            gl.viewportHeight = canvas.height/zoom;
+        }
     }catch(e){
         console.log(e);
     }
