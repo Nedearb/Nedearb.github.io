@@ -24,7 +24,7 @@ function initBuffers(){
     bufferColor.square.gray.p50 = bufferColor.square.gray;
     bufferColor.square.gray.p75 = makeSquareColorBuffer(.75, .75, .75, 1);
     
-    bufferTextureCoord = {player:{walk:[]}, enemy:{golem:{walk:[], death:[], attack:[]}}, projectile:{}};
+    bufferTextureCoord = {player:{walk:[]}, enemy:{golem:{walk:[], death:[], attack:[]}}, particle:{}, projectile:{}};
     bufferTextureCoord.player.stand = makeFrame(0, 0, 12, 12, 256, 256);
     bufferTextureCoord.player.jump = makeFrame(12, 0, 12, 12, 256, 256);
     bufferTextureCoord.player.fall = makeFrame(24, 0, 12, 12, 256, 256);
@@ -47,6 +47,9 @@ function initBuffers(){
     bufferTextureCoord.enemy.golem.attack.push(makeFrame(12, 56, 12, 16, 256, 256));
     bufferTextureCoord.enemy.golem.attack.push(makeFrame(24, 56, 12, 16, 256, 256));
     
+    bufferTextureCoord.particle.muzzleFlashSmall = makeFrame(0, 0, 8, 3, 256, 256);
+    bufferTextureCoord.particle.spark1 = makeFrame(0, 3, 3, 3, 256, 256);
+    
     bufferTextureCoord.projectile.whiteLine = makeFrame(0, 0, 8, 1, 256, 256);
     
     
@@ -61,6 +64,7 @@ function initTextures(){
     textureProjectiles = loadTexture("projectiles.png");
     textureLevels = loadTexture("levels.png");
     textureUi = loadTexture("ui.png");
+    textureParticle = loadTexture("particles.png");
 }
 
 function gameLoop(){
@@ -94,6 +98,10 @@ function draw(){
     for(var i=0;i<projectileList.length;i++){
         projectileList[i].draw();
     }
+    
+    for(var i=0;i<particleList.length;i++){
+        particleList[i].draw();
+    }
 }
 
 function update(){
@@ -115,6 +123,14 @@ function update(){
         projectileList[i].update();
         if(projectileList[i].remove){
             projectileList.splice(i, 1);
+            i--;
+        }
+    }
+    
+    for(var i=0;i<particleList.length;i++){
+        particleList[i].update();
+        if(particleList[i].remove){
+            particleList.splice(i, 1);
             i--;
         }
     }
@@ -195,7 +211,7 @@ var stop = false;
 var zoom = 2;
 var bg = {r: 0, g: 0, b: 0};
 
-var depths = {actors: 0, healthBars: 1, background:-1};
+var depths = {actors: 0, healthBars: 2, background:-1, projectiles: 0, particles: 1};
 
 var gl;
 var shaderProgram;
@@ -209,6 +225,7 @@ var textureActors;
 var textureProjectiles;
 var textureLevels;
 var textureUi;
+var textureParticle;
 
 var bufferVertex;
 var bufferColor;
@@ -219,6 +236,7 @@ var view = {x: 0, y: 0};
 var player;
 var actorList = [];
 var projectileList = [];
+var particleList = [];
 
 var level = {};
 

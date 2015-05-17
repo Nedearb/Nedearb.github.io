@@ -272,8 +272,9 @@ var Actor = function(x, y, hw, hh, maxHp, renderInfo, frames) {
             
             this.frameAndHealthUpdate();
             
-            if(this.attackCooldown == 28){
-                projectileList.push(new Projectile(this.x, this.y-3, {x: this.facingRight?40:-40, y: 0}, 30, 16, false, {vertex: bufferVertex.square, color: bufferColor.square.white, texCoord: bufferTextureCoord.projectile.whiteLine, texture: textureProjectiles}));
+            if(this.attackCooldown == 25){
+                projectileList.push(new Projectile(this.x, this.y-3, {x: this.facingRight?40:-40, y: 0}, 30, 16, false, null));
+                particleList.push(new PinnedParticle(this, (14*(this.facingRight?1:-1)), -2.5, 3, {x: this.facingRight?1:-1, y:1}, {vertex: bufferVertex.square, color: bufferColor.square.white, texCoord: bufferTextureCoord.particle.muzzleFlashSmall, texture: textureParticle}));
             }
             
             this.keyUpdate();
@@ -355,9 +356,9 @@ var Actor = function(x, y, hw, hh, maxHp, renderInfo, frames) {
         }
         
         this.auxUpdate = function(){
-            if(this.attackCooldown >= 45){
+            if(this.attackCooldown > 45){
                 this.renderInfo.texCoord = this.frames.attack[this.frameTick % this.frames.attack.length];
-            }else if(this.attackCooldown == 44){
+            }else if(this.attackCooldown == 45){
                 this.frameSpeed = 10;
                 this.renderInfo.texCoord = this.frames.stand;
                 
@@ -415,6 +416,65 @@ var Actor = function(x, y, hw, hh, maxHp, renderInfo, frames) {
     }
 }
 
+//---- PinnedParticle ----//
+var PinnedParticle = function(base, xOff, yOff, life, scale, renderInfo){
+    this.base = base;
+    this.xOff = xOff;
+    this.yOff = yOff;
+    this.life = life;
+    this.scale = scale;
+    this.renderInfo = renderInfo;
+    
+    this.update = function(){
+        if(this.life <= 0){
+            this.remove = true;
+        }else{
+            this.life--;
+        }
+    }
+    
+    this.draw = function(){
+        mvPushMatrix();
+        mat4.translate(mvMatrix, [base.x+this.xOff, base.y+this.yOff, depths.particles]);
+        mat4.scale(mvMatrix, [scale.x*this.renderInfo.texCoord.width, scale.y*this.renderInfo.texCoord.height, 1]);
+        console.log();
+        drawBuffers(this.renderInfo);
+        mvPopMatrix();
+    }
+    
+}
+
+//---- Particle ----//
+var Particle = function(x, y, speed, life, scale, renderInfo){
+    this.x = x;
+    this.y = y;
+    this.vx = speed.x;
+    this.vy = speed.y;
+    this.life = life;
+    this.scale = scale;
+    this.renderInfo = renderInfo;
+    
+    this.update = function(){
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        if(this.life <= 0){
+            this.remove = true;
+        }else{
+            this.life--;
+        }
+    }
+    
+    this.draw = function(){
+        mvPushMatrix();
+        mat4.translate(mvMatrix, [this.x, this.y, depths.particles]);
+        mat4.scale(mvMatrix, [scale.x*this.renderInfo.texCoord.width, scale.y*this.renderInfo.texCoord.height, 1]);
+        console.log();
+        drawBuffers(this.renderInfo);
+        mvPopMatrix();
+    }
+    
+}
 
 //---- Projectile ----//
 var Projectile = function(x, y, speed, life, power, hostile, renderInfo){
@@ -430,7 +490,6 @@ var Projectile = function(x, y, speed, life, power, hostile, renderInfo){
     this.hostile = hostile;
     this.pierce = 0;
     this.renderInfo = renderInfo;
-    this.collisionFrameCount = Math.max(Math.abs(speed.x), Math.abs(speed.y))/4;
     
     this.collision = function(){
         var myBounds = {x1: Math.min(this.x, this.lastX), y1: Math.min(this.y, this.lastY), x2: Math.max(this.x, this.lastX), y2: Math.max(this.y, this.lastY)};
@@ -469,6 +528,7 @@ var Projectile = function(x, y, speed, life, power, hostile, renderInfo){
         var ec = this.enemyCollision();
         if(ec){
             ec.hp -= this.power;
+            particleList.push(new Particle(ec.x, ec.y, {x: (Math.random()-.5)*1, y: (Math.random()-.5)*1}, 10, {x:1, y:1}, {vertex: bufferVertex.square, color: bufferColor.square.white, texCoord: bufferTextureCoord.particle.spark1, texture: textureParticle}));
             if(this.pierce > 0){
                 this.pierce--;
             }else{
@@ -489,7 +549,7 @@ var Projectile = function(x, y, speed, life, power, hostile, renderInfo){
     this.draw = function(){
         if(this.renderInfo){
             mvPushMatrix();
-            mat4.translate(mvMatrix, [Math.round(this.x), Math.round(this.y), this.depth]);
+            mat4.translate(mvMatrix, [this.x, this.y, depths.projectiles]);
             mat4.scale(mvMatrix, [this.renderInfo.texCoord.width*(this.vx>0?1:-1), this.renderInfo.texCoord.height, 1]);
             drawBuffers(this.renderInfo);
             mvPopMatrix();
