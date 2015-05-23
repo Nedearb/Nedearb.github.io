@@ -166,6 +166,7 @@ var Actor = function(x, y, hw, hh, maxHp, renderInfo, frames) {
             drawBuffers(this.renderInfo);
             mvPopMatrix();
             if(this.hp < this.maxHp && this.hp > 0){
+                setGlobalColor(1, 1, 1, .8);
                 mvPushMatrix();
                 mat4.translate(mvMatrix, [this.x, this.y-10, depths.healthBars]);
                 mvPushMatrix();
@@ -183,6 +184,7 @@ var Actor = function(x, y, hw, hh, maxHp, renderInfo, frames) {
                 drawBuffers(getColoredSquare(bufferColor.square.red));
                 mvPopMatrix();
                 mvPopMatrix();
+                setGlobalColor(1, 1, 1, 1);
             }
         }
     }
@@ -274,7 +276,7 @@ var Actor = function(x, y, hw, hh, maxHp, renderInfo, frames) {
             
             if(this.attackCooldown == 25){
                 projectileList.push(new Projectile(this.x, this.y-3, {x: this.facingRight?40:-40, y: 0}, 30, 16, false, null));
-                particleList.push(new PinnedParticle(this, (14*(this.facingRight?1:-1)), -2.5, 3, {x: this.facingRight?1:-1, y:1}, {vertex: bufferVertex.square, color: bufferColor.square.white, texCoord: bufferTextureCoord.particle.muzzleFlashSmall, texture: textureParticle}));
+                particleList.push(new PinnedParticle(this, (10*(this.facingRight?1:-1)), -2.5, 3, {x: this.facingRight?1:-1, y:1}, {vertex: bufferVertex.square, color: bufferColor.square.white, texCoord: bufferTextureCoord.particle.muzzleFlashSmall, texture: textureParticle}));
             }
             
             this.keyUpdate();
@@ -381,17 +383,16 @@ var Actor = function(x, y, hw, hh, maxHp, renderInfo, frames) {
                 this.renderInfo.texCoord = this.frames.stand;
                 if(Math.abs(yDif) < 30){
                     if(xDif > 10){
-                        this.facingRight = true;
                         this.vx = this.speeds.walk;
                         this.renderInfo.texCoord = this.frames.walk[this.frameTick % this.frames.walk.length];
                     }else if(xDif < -10){
-                        this.facingRight = false;
                         this.vx = -this.speeds.walk;
                         this.renderInfo.texCoord = this.frames.walk[this.frameTick % this.frames.walk.length];
                     }else{
                         this.tryAttack();
                     }
                 }
+                this.facingRight = xDif>0;
 
             }
             
@@ -469,7 +470,6 @@ var Particle = function(x, y, speed, life, scale, renderInfo){
         mvPushMatrix();
         mat4.translate(mvMatrix, [this.x, this.y, depths.particles]);
         mat4.scale(mvMatrix, [scale.x*this.renderInfo.texCoord.width, scale.y*this.renderInfo.texCoord.height, 1]);
-        console.log();
         drawBuffers(this.renderInfo);
         mvPopMatrix();
     }

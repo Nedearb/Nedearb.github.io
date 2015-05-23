@@ -25,6 +25,9 @@ function initBuffers(){
     bufferColor.square.gray.p75 = makeSquareColorBuffer(.75, .75, .75, 1);
     
     bufferTextureCoord = {player:{walk:[]}, enemy:{golem:{walk:[], death:[], attack:[]}}, particle:{}, projectile:{}};
+    
+    bufferTextureCoord.full = makeFrame(0, 0, 256, 256, 256, 256);
+    
     bufferTextureCoord.player.stand = makeFrame(0, 0, 12, 12, 256, 256);
     bufferTextureCoord.player.jump = makeFrame(12, 0, 12, 12, 256, 256);
     bufferTextureCoord.player.fall = makeFrame(24, 0, 12, 12, 256, 256);
@@ -65,6 +68,9 @@ function initTextures(){
     textureLevels = loadTexture("levels.png");
     textureUi = loadTexture("ui.png");
     textureParticle = loadTexture("particles.png");
+    textureBg = loadTexture("bg.png");
+    
+    TEXTURE_INDEX = [gl.TEXTURE0, gl.TEXTURE1, gl.TEXTURE2, gl.TEXTURE3, gl.TEXTURE4, gl.TEXTURE5, gl.TEXTURE6, gl.TEXTURE7, gl.TEXTURE8]; //I think this can go to 16
 }
 
 function gameLoop(){
@@ -74,6 +80,17 @@ function gameLoop(){
     draw();
     update();
     tick++;
+    
+    var d = new Date();
+    var currentTime = d.getTime();
+    if(currentTime - 1000 > lastTime){
+        lastTime = currentTime;
+        fps = frameCount;
+        frameCount = 0;
+        console.log("fps: "+fps);
+    }
+    frameCount++;
+    
 }
 
 function draw(){
@@ -85,6 +102,12 @@ function draw(){
     mat4.identity(mvMatrix);
     
     mat4.translate(pMatrix, [-view.x, -view.y, 0]);
+    
+    mvPushMatrix();
+    mat4.translate(mvMatrix, [view.x+gl.viewportWidth/2, view.y+gl.viewportHeight/2, depths.background]);
+    mat4.scale(mvMatrix, [gl.viewportWidth, gl.viewportHeight, 1]);
+    drawBuffers(bgRenderInfo);
+    mvPopMatrix();
     
     mvPushMatrix();
     mat4.translate(mvMatrix, [0, 0, depths.background]);
@@ -136,6 +159,7 @@ function update(){
     }
     
     if(keys[KEY_DEBUG_SPAWN_ENEMY] && !lastKeys[KEY_DEBUG_SPAWN_ENEMY]){
+        
         var t = new Actor(player.x, player.y-100, 3, 7, 200, {vertex: bufferVertex.square, color: bufferColor.square.white, texture: textureActors}, bufferTextureCoord.enemy.golem);
         t.initEnemy();
         actorList.push(t);
@@ -150,9 +174,11 @@ function start(){
     initBuffers();
     initTextures();
     
-    player = new Actor(0, 0, 2, 5, 100, {vertex: bufferVertex.square, color: bufferColor.square.white, texture: textureActors}, bufferTextureCoord.player);
+    player = new Actor(0, 0, 2, 5, 1000000000, {vertex: bufferVertex.square, color: bufferColor.square.white, texture: textureActors}, bufferTextureCoord.player);
     player.initPlayer();
     actorList.push(player);
+    
+    bgRenderInfo = {vertex: bufferVertex.square, color: bufferColor.square.white, texCoord: bufferTextureCoord.full, texture: textureBg};
     
     
     /*for(var i=0;i<1000;i++){
@@ -179,8 +205,31 @@ function start(){
     view.x += Math.round((player.x - gl.viewportWidth/2)-view.x);
     view.y += Math.round((player.y - gl.viewportHeight/2)-view.y);
     
-
-    setInterval(gameLoop, 1000/fps);
+    if(window.requestAnimationFrame){
+        console.log("Using Request Animation Frame");
+        var loop = function(){
+            gameLoop();
+            window.requestAnimationFrame(loop);
+        }
+        loop();
+    } else if (window.webkitRequestAnimationFrame) {
+        console.log("Using Webkit Request Animation Frame");
+        var loop = function(){
+            gameLoop();
+            window.webkitRequestAnimationFrame(loop);
+        }
+        loop();
+    } else if (window.mozRequestAnimationFrame) {
+        console.log("Using Moz Request Animation Frame");
+        var loop = function(){
+            gameLoop();
+            window.mozRequestAnimationFrame(loop);
+        }
+        loop();
+    } else {
+        console.log("Defaulting to set Interval");
+        setInterval(gameLoop, 1000 / 60);
+    }
     
     window.addEventListener("keydown", keyDownHandler, false);
     window.addEventListener("keyup", keyUpHandler, false);
@@ -204,9 +253,14 @@ var KEY_JUMP = 32;//Space
 var KEY_SHOOT = 16;//Left Shift
 var KEY_DEBUG_SPAWN_ENEMY = 85;//U
 
-var fps = 60;
+var nextTextureIndex = 0;
+var TEXTURE_INDEX;
+
 var tick = 0;
 var stop = false;
+var lastTime = 0;
+var frameCount = 0;
+
 
 var zoom = 2;
 var bg = {r: 0, g: 0, b: 0};
@@ -226,6 +280,9 @@ var textureProjectiles;
 var textureLevels;
 var textureUi;
 var textureParticle;
+var textureBg;
+
+var bgRenderInfo;
 
 var bufferVertex;
 var bufferColor;

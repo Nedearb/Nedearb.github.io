@@ -6,9 +6,10 @@ varying vec4 vColor;
 varying vec2 vTextureCoord;
 
 uniform sampler2D uSampler;
+uniform vec4 uGlobalColor;
 
 void main(void) {
-    gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)) * vColor;
+    gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)) * vColor * uGlobalColor;
     //Need to add back colors
 }
 `
@@ -93,6 +94,9 @@ function initShaders(){
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+    shaderProgram.globalColorUniform = gl.getUniformLocation(shaderProgram, "uGlobalColor");
+    
+    setGlobalColor(1, 1, 1, 1);
 }
 
 function createBuffer(points){
@@ -214,9 +218,9 @@ function drawBuffers(renderInfo){
         gl.bindBuffer(gl.ARRAY_BUFFER, renderInfo.texCoord);
         gl.vertexAttribPointer(shaderProgram.textureCoordAttrubute, renderInfo.texCoord.itemSize, gl.FLOAT, false, 0, 0);
         
-        gl.activeTexture(gl.TEXTURE0);
+        gl.activeTexture(TEXTURE_INDEX[renderInfo.texture.index]);
         gl.bindTexture(gl.TEXTURE_2D, renderInfo.texture);
-        gl.uniform1i(shaderProgram.samplerUniform, 0);
+        gl.uniform1i(shaderProgram.samplerUniform, renderInfo.texture.index);
 
         //gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.index);
         setMatrixUniforms();
@@ -239,15 +243,19 @@ function drawBuffersIndexed(renderInfo){
         gl.bindBuffer(gl.ARRAY_BUFFER, renderInfo.texCoord);
         gl.vertexAttribPointer(shaderProgram.textureCoordAttrubute, renderInfo.texCoord.itemSize, gl.FLOAT, false, 0, 0);
 
-        gl.activeTexture(gl.TEXTURE0);
+        gl.activeTexture(TEXTURE_INDEX[renderInfo.texture.index]);
         gl.bindTexture(gl.TEXTURE_2D, renderInfo.texture);
-        gl.uniform1i(shaderProgram.samplerUniform, 0);
+        gl.uniform1i(shaderProgram.samplerUniform, renderInfo.texture.index);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, renderInfo.index);
         setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, renderInfo.index.numItems, gl.UNSIGNED_SHORT, 0);
         
     }
+}
+
+function setGlobalColor(red, green, blue, alpha){
+    gl.uniform4f(shaderProgram.globalColorUniform, red, green, blue, alpha);
 }
 
 function loadTexture(path){
@@ -263,6 +271,12 @@ function loadTexture(path){
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.bindTexture(gl.TEXTURE_2D, null);
         texture.loaded = true;
+        
+        texture.index = nextTextureIndex;
+        nextTextureIndex++;
+        
+        gl.activeTexture(TEXTURE_INDEX[texture.index]);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
     }
     texture.image.src = path;
     texture.width = 256;
