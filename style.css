@@ -4,6 +4,7 @@ body{
     font-family: sans-serif;
     color:white;
     padding-left: 20px;
+    margin: 0px;
 }
 
 p{
@@ -12,6 +13,14 @@ p{
 
 div.tab_bar{
     padding: 15px 0px;
+}
+
+h2, h3{
+    margin: 0px;
+}
+
+p{
+    margin: 0px;
 }
 
 a{
@@ -59,14 +68,16 @@ div.page_wrapper{
     flex-direction: column;
 }
 
-div.page_header{
+#page_header{
     
 }
 
-div.page_body{
+#page_body{
     flex: 1;
 }
 
-div.page_footer{
-    
+#page_footer{
+    position: absolute;
+    bottom: 0px;
+    margin-bottom: 20px;
 }
