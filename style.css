@@ -49,6 +49,8 @@ div.link:hover{
 div.tab{
     font-size: 20px;
     padding: 10px;
+    font-weight: bold;
+    font-size: 30px;
     
     -webkit-transition: all .3s ease;
     -moz-transition: all .3s ease;

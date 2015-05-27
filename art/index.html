@@ -16,10 +16,14 @@
                 xhr.open('GET',textFile);
                 xhr.onload = function(){
                     var h3 = document.createElement('h3');
+                    var aDiv = document.createElement('div');
                     var a = document.createElement('a');
+                    a.className = "link";
+                    aDiv.className = "link";
                     a.href = textFile;
                     a.textContent = name;
-                    h3.appendChild(a);
+                    aDiv.appendChild(a);
+                    h3.appendChild(aDiv);
                     
                     var pre = document.createElement('pre');
                     pre.textContent = this.response;
