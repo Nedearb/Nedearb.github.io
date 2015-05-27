@@ -1,5 +1,7 @@
 body{
     margin: 0px;
+    background-color: #3b414e;
+    font-family: sans-serif;
 }
 
 p{
@@ -12,10 +14,20 @@ div.tab_bar{
 
 a.tab{
     font-size: 20px;
-    color: #FFFFFF;
-    text-decoration: none;
+    color:white;
+    text-decoration:none;
     padding: 10px;
-    background-color: #4070B0;
+    
+    -webkit-transition: all .3s ease;
+    -moz-transition: all .3s ease;
+    transition: all .3s ease;
+}
+
+a.tab:hover{
+    -webkit-transform:translateY(5px);
+    -moz-transform:translateY(5px);
+    -ms-transform:translateY(5px);
+    transform:translateY(5px);
 }
 
 div.page_wrapper{
@@ -25,14 +37,14 @@ div.page_wrapper{
 }
 
 div.page_header{
-    background-color: #3060A0;
+    
 }
 
 div.page_body{
-    background-color: #D0E0F0;
+    
     flex: 1;
 }
 
 div.page_footer{
-    background-color: #3060A0;
+    
 }
