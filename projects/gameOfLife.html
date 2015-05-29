@@ -403,35 +403,16 @@
             }
 
             function redraw(){
-                
-                if(cellSize == 1){
-                    context.fillStyle = '#FFFFFF';
-                    context.fillRect(0, 0, gridSize.width, gridSize.height);
-                    for(var i=0;i<gridSize.width;i++){
-                        for(var j=0;j<gridSize.height;j++){
-                            if(updateGrid[i][j]){
-                                if(grid[i][j]){
-                                    context.fillStyle = '#000000';
-                                    context.fillRect(i, j, 1, 1);
-                                }
-                                updateGrid[i][j] = false;
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        if(updateGrid[i][j]){
+                            if(grid[i][j]){
+                                context.fillStyle = '#000000';
+                            }else{
+                                context.fillStyle = '#FFFFFF';
                             }
-                        }
-                    }
-                }else{
-
-                    for(var i=0;i<gridSize.width;i++){
-                        for(var j=0;j<gridSize.height;j++){
-                            if(updateGrid[i][j]){
-                                if(grid[i][j]){
-                                    context.fillStyle = '#000000';
-                                    context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
-                                }else{
-                                    context.fillStyle = '#FFFFFF';
-                                    context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
-                                }
-                                updateGrid[i][j] = false;
-                            }
+                            context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
+                            updateGrid[i][j] = false;
                         }
                     }
                 }
