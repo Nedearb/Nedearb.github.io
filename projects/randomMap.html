@@ -14,6 +14,7 @@
             
             var map;
             var paused = false;
+            var mapHistory = [];
             
             function initialize() {
                 var mapOptions = {
@@ -34,11 +35,19 @@
             }
             
             function next(){
-                map.setCenter(new google.maps.LatLng((Math.random()*180)-90, (Math.random()*360)-180));
+                var center = map.getCenter();
+                mapHistory.push({lat:center.A, lng:center.F});
+                var loc = {lat:(Math.random()*180)-90, lng:(Math.random()*360)-180};
+                map.setCenter(new google.maps.LatLng(loc.lat, loc.lng));
             }
             
-            function pausePlay(){
-                paused = !paused;
+            function prev(){
+                var loc = mapHistory.pop();
+                map.setCenter(new google.maps.LatLng(loc.lat, loc.lng));
+            }
+            
+            function pausePlay(n){
+                paused = n;
                 document.getElementById("pauseButton").value = paused?"Autoplay":"Stop Autoplay";
             }
             
@@ -48,8 +57,10 @@
     </head>
     <body>
         <div>
-            <input type="button" value="Stop Autoplay" id="pauseButton" onclick="pausePlay()"></input>
-            <input type="button" value="Next" onclick="next()"></input>
+            <input type="button" value="Stop Autoplay" id="pauseButton" onclick="pausePlay(!paused);"></input>
+            <input type="button" value="Previous" onclick="prev();pausePlay(true)"></input>
+            <input type="button" value="Random" onclick="next();pausePlay(true);"></input>
+
         </div>
         <div id="map-canvas"/>
     </body>
