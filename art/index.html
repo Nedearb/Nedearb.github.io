@@ -8,9 +8,9 @@
         <link rel="stylesheet" type="text/css" href="../style.css">
         <script type="text/javascript" src="/globaImpots.js"></script>
         <script type="text/javascript">
-            
+
             var artDiv;
-            
+
             function readArt(textFile, name){
                 var xhr=new XMLHttpRequest;
                 xhr.open('GET',textFile);
@@ -24,25 +24,26 @@
                     a.textContent = name;
                     aDiv.appendChild(a);
                     h3.appendChild(aDiv);
-                    
+
                     var pre = document.createElement('pre');
                     pre.textContent = this.response;
-                    
+
                     var div = document.getElementById("art_"+textFile);
                     div.appendChild(h3);
                     div.appendChild(pre);
                     div.appendChild(document.createElement('br'));
                 };
                 xhr.send();
-                
+
                 var div = document.createElement('div');
                 div.id = "art_"+textFile;
                 artDiv.appendChild(div);
             }
-            
+
             function initArt(){
                 artDiv = document.getElementById("art");
 
+                readArt("usa.txt", "Continental United States of America");
                 readArt("3d keyboard.txt", "Keyboard");
                 readArt("One Dollar Bill.txt", "One US Dollar");
                 readArt("Statue of Liberty.txt", "Statue of Liberty");
@@ -68,7 +69,7 @@
             </div>
             <div id="page_body">
                 <div id="art">
-                
+
                 </div>
             </div>
             <div id="page_footer">
