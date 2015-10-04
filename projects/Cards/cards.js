@@ -4,8 +4,8 @@ var deckImage;
             
 var table = {cards:[]}
 var cursor = {x:0, y:0};
-var cursorOffset = {x:0, y:0};
-var activeCard = null;
+//var cursorOffset = {x:0, y:0};
+var selection = {x1:0, y1:0, x2:0, y2:0, cards:[]};
 
 var valAce = 0;
 var valTwo = 1;
@@ -57,7 +57,7 @@ function createGuid(){
 }
 
 function makeCardLocal(val, suit, side, rot, x, y){
-    return {val:val, suit:suit, side:side, rot:rot, x:x, y:y, uid:createGuid()}
+    return {val:val, suit:suit, side:side, rot:rot, x:x, y:y, uid:createGuid()};
 }
 
 function makeDeckLocal(side, rot, x, y){
@@ -165,7 +165,7 @@ function redraw(){
             drawSuit(card.suit, card.x, card.y);
         }*/
         context.save();
-        context.translate(card.x, card.y);
+        context.translate(card.x+.5, card.y+.5);
         if(card.rot == rotLandscape){
             context.rotate(Math.PI/2);
         }
@@ -175,20 +175,33 @@ function redraw(){
             context.drawImage(deckImage, 0, 4*cardHeight, 28, 38, -cardHalfWidth, -cardHalfHeight, cardWidth, cardHeight);
         }
         context.restore();
+    }
+    
+    for(var i=0;i<selection.cards.length;i++){
+        var card = selection.cards[i];
+        context.strokeStyle = "#FF0000";
+        if(card.rot == rotLandscape){
+            context.strokeRect(card.x-cardHalfHeight+2, card.y-cardHalfWidth+2, cardHalfHeight*2-3, cardHalfWidth*2-3);
+        }else{
+            context.strokeRect(card.x-cardHalfWidth+2, card.y-cardHalfHeight+2, cardHalfWidth*2-3, cardHalfHeight*2-3);
+        }
         
     }
-    context.drawImage(deckImage, 2*cardWidth, 4*cardHeight, 6, 6, cursor.x-3, cursor.y, 6, 6)
+    
+    context.strokeStyle = "#FFFF00";
+    context.strokeRect(selection.x1, selection.y1, selection.x2-selection.x1, selection.y2-selection.y1);
+    context.drawImage(deckImage, 2*cardWidth, 4*cardHeight, 6, 6, cursor.x-3, cursor.y-3, 6, 6);
 }
 
-function getCardAtPosition(pos){
-    for(var i=table.cards.length-1;i>=0;i--){
-        var card = table.cards[i];
+function getCardAtPosition(pos, list){
+    for(var i=list.length-1;i>=0;i--){
+        var card = list[i];
         if(card.rot == rotLandscape){
-            if(card.x-cardHalfHeight < cursor.x && card.x+cardHalfHeight > cursor.x && card.y-cardHalfWidth < cursor.y && card.y+cardHalfWidth > cursor.y){
+            if(card.x-cardHalfHeight < pos.x && card.x+cardHalfHeight > pos.x && card.y-cardHalfWidth < pos.y && card.y+cardHalfWidth > cursor.y){
                 return card;
             }
         }else{
-            if(card.x-cardHalfWidth < cursor.x && card.x+cardHalfWidth > cursor.x && card.y-cardHalfHeight < cursor.y && card.y+cardHalfHeight > cursor.y){
+            if(card.x-cardHalfWidth < pos.x && card.x+cardHalfWidth > pos.x && card.y-cardHalfHeight < pos.y && card.y+cardHalfHeight > cursor.y){
                 return card;
             }
         }
@@ -196,20 +209,62 @@ function getCardAtPosition(pos){
     return null;
 }
 
+function AABB(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2){
+    return  ax1 < bx2 &&
+            ax2 > bx1 &&
+            ay1 < by2 &&
+            ay2 > by1;
+}
+
+function getCardsInArea(x1, y1, x2, y2, list){
+    var cards = [];
+    for(var i=list.length-1;i>=0;i--){
+        var card = list[i];
+        if(card.rot == rotLandscape){
+            if(AABB(x1, y1, x2, y2, card.x-cardHalfHeight, card.y-cardHalfWidth, card.x+cardHalfHeight, card.y+cardHalfWidth)){
+                cards.push(card);
+            }
+        }else{
+            if(AABB(x1, y1, x2, y2, card.x-cardHalfWidth, card.y-cardHalfHeight, card.x+cardHalfWidth, card.y+cardHalfHeight)){
+                cards.push(card);
+            }
+        }
+    }
+    return cards;
+}
+
 function removeCardNet(card){
-    sendMessage({msg:"removeCard", data:card.uid})
+    sendMessage({msg:"removeCard", data:card.uid});
 }
 
 function addCardNet(card){
-    sendMessage({msg:"addCard", data:card})
+    sendMessage({msg:"addCard", data:card});
 }
 
 function moveCardToTopNet(card){
-    sendMessage({msg:"moveCardToTop", data:card.uid})
+    sendMessage({msg:"moveCardToTop", data:card.uid});
+}
+
+function moveCardsToTopNet(cards){
+    if(cards.length == 0){
+        return;
+    }
+    var uids = [];
+    for(var i=0;i<cards.length;i++){
+        uids.push(cards.uid);
+    }
+    sendMessage({msg:"moveCardsToTop", data:uids});
 }
 
 function changeCardNet(card){
-    sendMessage({msg:"changeCard", data:card})
+    sendMessage({msg:"changeCard", data:card});
+}
+
+function changeCardsNet(cards){
+    if(cards.length == 0){
+        return;
+    }
+    sendMessage({msg:"changeCards", data:cards});
 }
 
 function moveCardNet(card){
@@ -231,17 +286,23 @@ function removeCardLocal(uid){
     for(var i=0;i<table.cards.length;i++){
         var card = table.cards[i];
         if(card.uid == uid){
-            table.cards.splice(i, 1);
+            table.cards = table.cards.splice(i, 1);
             return card;
         }
     }
+    return null;
 }
 
 function changeCardLocal(changedCard){
     for(var i=0;i<table.cards.length;i++){
         var card = table.cards[i];
         if(card.uid == changedCard.uid){
-            table.cards[i] = changedCard;
+            table.cards[i].val = changedCard.val;
+            table.cards[i].suit = changedCard.suit;
+            table.cards[i].side = changedCard.side;
+            table.cards[i].rot = changedCard.rot;
+            table.cards[i].x = changedCard.x;
+            table.cards[i].y = changedCard.y;
             return;
         }
     }
@@ -253,35 +314,41 @@ function sendMessage(data){
         channel: PUBNUB_channel,
         message: data
     });
+    console.log("Sent:", data);
 }
 
 function reciveMessage(data){
     console.log("Recived:", data);
     if(data.msg == "clearCards"){
         table.cards = [];
-    }
-    if(data.msg == "newDeck"){
+    }else if(data.msg == "newDeck"){
         table.cards = table.cards.concat(data.data);
-    }
-    if(data.msg == "removeCard"){
+    }else if(data.msg == "removeCard"){
         removeCardLocal(data.data);
-    }
-    if(data.msg == "addCard"){
+    }else if(data.msg == "addCard"){
         table.cards.push(data.data);
-    }
-    if(data.msg == "changeCard"){
+    }else if(data.msg == "changeCard"){
         changeCardLocal(data.data);
-    }
-    if(data.msg == "moveCard"){
-        changeCardLocal(data.data);
-    }
-    if(data.msg == "moveCardToTop"){
-        table.cards.push(removeCardLocal(data.data));
-    }
-    if(data.msg == "requestCards"){
-        for(var i=0;i<table.cards.length;i++){
-            changeCardNet(table.cards[i]);
+    }else if(data.msg == "changeCards"){
+        for(var i=0;i<data.data.length;i++){
+            changeCardLocal(data.data[i]);
         }
+    }else if(data.msg == "moveCard"){
+        changeCardLocal(data.data);
+    }else if(data.msg == "moveCardToTop"){
+        var c = removeCardLocal(data.data);
+        if(c){
+            table.cards.push(c);
+        }
+    }else if(data.msg == "moveCardsToTop"){
+        for(var i=0;i<data.data.length;i++){
+            var c = removeCardLocal(data.data[i]);
+            if(c){
+                table.cards.push(c);
+            }
+        }
+    }else if(data.msg == "requestCards"){
+        changeCardsNet(table.cards);
     }
     redraw();
 }
@@ -292,7 +359,7 @@ function buttonNewDeck(){
     sendMessage({msg:"newDeck", data:deck});
 }
 
-function clearTable(){
+function clearCards(){
     sendMessage({msg:"clearCards"});
 }
 
@@ -306,28 +373,91 @@ var PUBNUB_cards = PUBNUB.init({
 var PUBNUB_channel = "cards";
 
 function setCursor(e){
-    cursor.x = e.clientX - canvas.offsetLeft;
-    cursor.y = e.clientY - canvas.offsetTop;
+    cursor.x = Math.round(e.clientX - canvas.offsetLeft);
+    cursor.y = Math.round(e.clientY - canvas.offsetTop);
+}
+
+
+function flipSelection(){
+    if(selection.cards.length == 0){
+        selection.cards.push(getCardAtPosition(cursor, table.cards));
+    }
+    for(var i=0;i<selection.cards.length;i++){
+        if(selection.cards[i].side == sideFaceDown){
+            selection.cards[i].side = sideFaceUp;
+        }else{
+            selection.cards[i].side = sideFaceDown;
+        }
+    }
+    changeCardsNet(selection.cards);
+    moveCardsToTopNet(selection.cards);
+    selection.cards = [];
+}
+
+function rotSelection(){
+    if(selection.cards.length == 0){
+        selection.cards.push(getCardAtPosition(cursor, table.cards));
+    }
+    for(var i=0;i<selection.cards.length;i++){
+        if(selection.cards[i].rot == rotPortrait){
+            selection.cards[i].rot = rotLandscape;
+        }else{
+            selection.cards[i].rot = rotPortrait;
+        }
+    }
+    changeCardsNet(selection.cards);
+    moveCardsToTopNet(selection.cards);
+    selection.cards = [];
 }
 
 
 window.onload = function(){
     
     canvas = document.getElementById("mainCanvas");
+    cursor.x = canvas.width;
+    cursor.y = canvas.height;
     context = canvas.getContext("2d");
+    context.translate(.5, .5);
     
     deckImage = document.getElementById("deckImage");
     
     redraw();
     
+    canvas.oncontextmenu = function(e){
+        flipSelection();
+        e.preventDefault();
+    }
+    
     canvas.onmousedown = function(e){
         setCursor(e);
+        if(!e.shiftKey){
+            if(selection.cards.length > 0){
+                if(!getCardAtPosition(cursor, selection.cards)){
+                    selection.cards = [];
+                }
+            }
+        }
         if(e.which == 1){
-            selection.x1 = cursor.x;
-            selection.x2 = cursor.x;
-            selection.y1 = cursor.y;
-            selection.y2 = cursor.y;
-            selection.cards = [];
+            if(e.shiftKey){
+                selection.x1 = cursor.x;
+                selection.x2 = cursor.x;
+                selection.y1 = cursor.y;
+                selection.y2 = cursor.y;
+                selection.cards = [];
+            }else{
+                if(selection.cards.length == 0){
+                    var card = getCardAtPosition(cursor, table.cards);
+                    if(card){
+                        selection.cards.push(card);
+                    }
+                }
+                for(var i=0;i<selection.cards.length;i++){
+                    selection.cards[i].cursorOffsetX = selection.cards[i].x - cursor.x;
+                    selection.cards[i].cursorOffsetY = selection.cards[i].y - cursor.y;
+                }
+            }
+        }else if(e.which == 2){
+            rotSelection();
         }
         /*setCursor(e);
         activeCard = getCardAtPosition(cursor);
@@ -352,34 +482,26 @@ window.onload = function(){
         redraw();
     }
     
-    canvas.ondblclick = function(e){
-        /*setCursor(e);
-        activeCard = getCardAtPosition(cursor);
-        if(e.which == 1){
-            if(activeCard){
-                if(activeCard.rot == rotPortrait){
-                    activeCard.rot = rotLandscape;
-                }else{
-                    activeCard.rot = rotPortrait;
-                }
-                changeCardNet(activeCard);
-                moveCardToTopNet(activeCard);
-            }
-        }*/
-        redraw();
-    }
-    
     canvas.onmousemove = function(e){
         if(e.which == 1){
-            selection.y1 = cursor.y;
-            selection.y2 = cursor.y;
+            setCursor(e);
+            if(e.shiftKey){
+                selection.x2 = cursor.x;
+                selection.y2 = cursor.y;
+            }else{
+                for(var i=0;i<selection.cards.length;i++){
+                    selection.x1 = cursor.x;
+                    selection.x2 = cursor.x;
+                    selection.y1 = cursor.y;
+                    selection.y2 = cursor.y;
+                    selection.cards[i].x = Math.round(cursor.x + selection.cards[i].cursorOffsetX);
+                    selection.cards[i].y = Math.round(cursor.y + selection.cards[i].cursorOffsetY);
+                }
+            }
         }
         /*
         if(activeCard){
             setCursor(e);
-            activeCard.x = Math.round(cursor.x + cursorOffset.x);
-            activeCard.y = Math.round(cursor.y + cursorOffset.y);
-            //moveCardNet(activeCard);
         }*/
         redraw();
     }
@@ -394,7 +516,36 @@ window.onload = function(){
             }
         }
         activeCard = null;*/
-        selection.cards = getCardsInArea(selection.x1, selection.y1, selection.x2, selection.y2);
+        if(selection.x1 > selection.x2){
+            var temp = selection.x1;
+            selection.x1 = selection.x2;
+            selection.x2 = temp;
+        }
+        if(selection.y1 > selection.y2){
+            var temp = selection.y1;
+            selection.y1 = selection.y2;
+            selection.y2 = temp;
+        }
+        if(e.shiftKey){
+            selection.cards = getCardsInArea(selection.x1, selection.y1, selection.x2, selection.y2, table.cards);
+        }
+        selection.x1 = cursor.x;
+        selection.x2 = cursor.x;
+        selection.y1 = cursor.y;
+        selection.y2 = cursor.y;
+        changeCardsNet(selection.cards);
+        moveCardsToTopNet(selection.cards);
+        
+        redraw();
+    }
+    
+    document.onkeydown = function(e){
+        if(e.keyCode == 90){//z
+            flipSelection();
+        }
+        if(e.keyCode == 88){//x
+            rotSelection();
+        }        
         redraw();
     }
     
