@@ -381,7 +381,10 @@ function setCursor(e){
 
 function flipSelection(){
     if(selection.cards.length == 0){
-        selection.cards.push(getCardAtPosition(cursor, table.cards));
+        var card = getCardAtPosition(cursor, table.cards);
+        if(card){
+            selection.cards.push(card);
+        }
     }
     for(var i=0;i<selection.cards.length;i++){
         if(selection.cards[i].side == sideFaceDown){
@@ -397,7 +400,10 @@ function flipSelection(){
 
 function rotSelection(){
     if(selection.cards.length == 0){
-        selection.cards.push(getCardAtPosition(cursor, table.cards));
+        var card = getCardAtPosition(cursor, table.cards);
+        if(card){
+            selection.cards.push(card);
+        }
     }
     for(var i=0;i<selection.cards.length;i++){
         if(selection.cards[i].rot == rotPortrait){
