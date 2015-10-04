@@ -321,6 +321,7 @@ function reciveMessage(data){
     console.log("Recived:", data);
     if(data.msg == "clearCards"){
         table.cards = [];
+        selection.cards = [];
     }else if(data.msg == "newDeck"){
         table.cards = table.cards.concat(data.data);
     }else if(data.msg == "removeCard"){
@@ -359,7 +360,7 @@ function buttonNewDeck(){
     sendMessage({msg:"newDeck", data:deck});
 }
 
-function clearCards(){
+function buttonClearCards(){
     sendMessage({msg:"clearCards"});
 }
 
@@ -549,15 +550,67 @@ window.onload = function(){
         redraw();
     }
     
-    PUBNUB_cards.subscribe({
-        channel: PUBNUB_channel,
-        message: reciveMessage
-    });
+    var inputChannel = document.getElementById("inputChannel");
     
-    sendMessage({msg:"requestCards"})
+    inputChannel.onchange = function(){
+        updatePUBNUBChannel("cards_"+inputChannel.value);
+    }
+    
+    inputChannel.value = Math.round(Math.random()*10000);
+    inputChannel.onchange();
+    
+    var inputFileLoad = document.getElementById("inputFileLoad");
+    inputFileLoad.addEventListener("change", loadTable, false);
     
 }
 
+function saveTable(){
+    window.location = "data:application/octet-stream,"+(JSON.stringify(table));
+    console.log("Saved Table");
+}
+
+function loadTable(e){
+    var f = e.target.files[0];
+
+    if(f){
+        var r = new FileReader();
+        r.onload = function(e){
+            try{
+                var contents = e.target.result;
+                
+                var loadedTable = JSON.parse(contents);
+                
+                table.cards = table.cards.concat(loadedTable.cards);
+                
+                console.log("Loaded Table");
+                
+            }catch(e){
+                alert("Failed to load file");
+                console.error(e);
+            }
+        }
+        r.readAsText(f);
+    }
+}
+
+function subscribeToPUBNUBChannel(channel){
+    PUBNUB_channel = channel;
+    PUBNUB_cards.subscribe({
+        channel: PUBNUB_channel,
+        message: reciveMessage,
+        connect: function(){
+            sendMessage({msg:"requestCards"});
+        }
+    });
+}
+
+function updatePUBNUBChannel(newChannel){
+    PUBNUB_cards.unsubscribe({
+        channel: PUBNUB_channel
+    });
+    
+    subscribeToPUBNUBChannel(newChannel);
+}
 
 
 

@@ -5,8 +5,11 @@
         <script type="text/javascript" src="cards.js"></script>
     </head>
     <body>
+        Channel:<input type="text" id="inputChannel">   
         <button type="button" onclick="buttonNewDeck()">New Shuffled Deck</button>
-        <button type="button" onclick="clearCards()">Clear Cards</button>
+        <button type="button" onclick="buttonClearCards()">Clear Cards</button>
+        <button type="button" onclick="saveTable()">Save</button>
+        Load:<input type="file" id="inputFileLoad" />
         <br />
         <canvas id="mainCanvas" width="640" height="480"></canvas>
         <img id="deckImage" src="deck.png" style="display: none;">
