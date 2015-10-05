@@ -3,17 +3,82 @@
     <head>
         <script src="http://cdn.pubnub.com/pubnub-dev.js"></script>
         <script type="text/javascript" src="cards.js"></script>
+        <style>
+            th, td {
+                text-align: left;    
+            }
+        </style>
     </head>
     <body>
         <img id="deckImage" src="deck.png" style="display: none;">
-
-        Channel:<input type="text" id="inputChannel">   
-        <button type="button" onclick="buttonNewDeck()">New Shuffled Deck</button>
-        <button type="button" onclick="buttonClearCards()">Clear Cards</button>
+        <table>
+            <tr>
+                <td>
+                    Channel:<input type="text" id="inputChannel">
+                    <button type="button" onclick="buttonNewDeck()">New Shuffled Deck</button>
+                    <button type="button" onclick="buttonClearCards()">Clear Cards</button>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <canvas id="mainCanvas" width="640" height="480"></canvas>
+                </td>
+                <td>
+                    Place Card
+                    <br />
+                    <select id="makeCardVal">
+                        <option value="0">Ace</option>
+                        <option value="1">Two</option>
+                        <option value="2">Three</option>
+                        <option value="3">Four</option>
+                        <option value="4">Five</option>
+                        <option value="5">Six</option>
+                        <option value="6">Seven</option>
+                        <option value="7">Eight</option>
+                        <option value="8">Nine</option>
+                        <option value="9">Ten</option>
+                        <option value="10">Jack</option>
+                        <option value="11">Queen</option>
+                        <option value="12">King</option>
+                    </select>
+                    <br />
+                    <select id="makeCardSuit">
+                        <option value="1">Spades</option>
+                        <option value="3">Hearts</option>
+                        <option value="2">Diamonds</option>
+                        <option value="0">Clubs</option>
+                    </select>
+                    <br />
+                    <select id="makeCardSide">
+                        <option value="0">Face Down</option>
+                        <option value="1">Face Up</option>
+                    </select>
+                    <br />
+                    <select id="makeCardRot">
+                        <option value="0">Portrait</option>
+                        <option value="1">Landscape</option>
+                    </select>
+                    <br />
+                    <br />
+                    <button type="button" onclick="buttonMakeCard()">Place</button>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <button type="button" onclick="saveTable()">Save</button>
+                    Load:<input type="file" id="inputFileLoad" />
+                </td>
+            </tr>
+        </table>
+        
         <br />
-        <canvas id="mainCanvas" width="640" height="480"></canvas>
-        <br />
-        <button type="button" onclick="saveTable()">Save</button>
-        Load:<input type="file" id="inputFileLoad" />
+        <h3>Controls:</h3>
+        <ul>
+            <li>Click and drag to move a card.</li>
+            <li>Hold shift then click and drap to select multiple cards.</li>
+            <li>To flip a card right click it or press 'z' while selecting it.</li>
+            <li>To rotate a card middle click it or press 'x' while selecting it.</li>
+            <li>To delete a card press delete or backspace while selecting it.</li>
+        </ul>
     </body>
 </html>
