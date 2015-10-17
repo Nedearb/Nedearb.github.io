@@ -23,6 +23,12 @@ p{
     margin: 0px;
 }
 
+a.inlineLink{
+  text-decoration-line: underline;
+  color:white;
+  font-style: oblique;
+}
+
 a{
     text-decoration:none;
     color:white;
