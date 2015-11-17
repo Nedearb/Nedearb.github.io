@@ -31,6 +31,18 @@
                 }
             }
             
+            function toggleDrawGridLines(){
+                drawGridLines = !drawGridLines;
+                
+                for(var j=0;j<gridSize.height;j++){
+                    for(var i=0;i<gridSize.width;i++){
+                        updateGrid[i][j] = true;
+                    }
+                }
+                
+                firstDraw();
+            }
+            
             function getRuleString(){
                 var s = "B";
                 for(var i=0;i<=8;i++){
@@ -139,6 +151,8 @@
             var fps = 10;
 
             var mouseDown = false;
+            
+            var drawGridLines = true;
 
             function init(){
 
@@ -391,7 +405,7 @@
 
                 redraw();
                 
-                if(cellSize>1){
+                if(cellSize>1 && drawGridLines){
 
                     for(var i=0;i<gridSize.width;i++){
                         for(var j=0;j<gridSize.height;j++){
@@ -411,7 +425,11 @@
                             }else{
                                 context.fillStyle = '#FFFFFF';
                             }
-                            context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
+                            if(drawGridLines){
+                                context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
+                            }else{
+                                context.fillRect(i*cellSize, j*cellSize, cellSize, cellSize);
+                            }
                             updateGrid[i][j] = false;
                         }
                     }
@@ -876,7 +894,8 @@
                     <br />
                     <button onclick="saveFile()">Save File</button>
                     <input type="file" id="inputFileLoad" value="" />
-                    <button id="rulesShowHideButton" onclick="toggleRuleTable()">Rules</button>
+                    <button id="rulesShowHideButton" onclick="toggleRuleTable()">Show Rules</button>
+                    <input type="checkbox" onclick="toggleDrawGridLines()">Hide Grid</input>
                     <br />
                 </td>
                 <td>
