@@ -29,9 +29,12 @@ a{
 }
 
 a.inlineLink{
-  text-decoration-line: underline;
   color:white;
   font-weight: bold;
+}
+
+a.inlineLink:hover{
+  text-decoration: underline;
 }
 
 div.link{
