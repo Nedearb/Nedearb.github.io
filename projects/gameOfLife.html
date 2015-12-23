@@ -43,6 +43,10 @@
                 firstDraw();
             }
             
+            function toggleDefault(){
+                defaultCell = !defaultCell;
+            }
+            
             function getRuleString(){
                 var s = "B";
                 for(var i=0;i<=8;i++){
@@ -153,6 +157,10 @@
             var mouseDown = false;
             
             var drawGridLines = true;
+            
+            var defaultCell = 0;
+            
+            var cellColors = ['#FFFFFF', '#000000', '#0080FF'];
 
             function init(){
 
@@ -181,8 +189,8 @@
 
                 for(var i=0;i<gridSize.width;i++){
                     for(var j=0;j<gridSize.height;j++){
-                        grid[i][j] = false;
-                        tempGrid[i][j] = false;
+                        grid[i][j] = defaultCell;
+                        tempGrid[i][j] = defaultCell;
                         updateGrid[i][j] = true;
                     }
                 }
@@ -211,8 +219,8 @@
                 var y = Math.floor((mousePosition.y+window.scrollY)/cellSize);
                 if(x>=0 && y>=0 && x<gridSize.width && y<gridSize.height){
                     updateGrid[x][y] = true;
-                    grid[x][y] = !grid[x][y];
-                    cellSet = grid[x][y]
+                    grid[x][y] = grid[x][y]==0?1:0;
+                    cellSet = grid[x][y];
                 }
                 redraw();
             }
@@ -279,18 +287,38 @@
             function shiftGrid(x, y){
 
                 var tGrid = createArray(gridSize.width,gridSize.height);
-                var tTempGrid = createArray(gridSize.width,gridSize.height);
 
 
                 for(var i=0;i<gridSize.width;i++){
                     for(var j=0;j<gridSize.height;j++){
-                        tGrid[i][j] = getCellWithSafty(i-x, j-y, 0);
+                        tGrid[i][j] = getCellWithSafty(i-x, j-y);
                     }
                 }
 
                 for(var i=0;i<gridSize.width;i++){
                     for(var j=0;j<gridSize.height;j++){
                         grid[i][j] = tGrid[i][j];
+                        updateGrid[i][j] = true;
+                    }
+                }
+
+                redraw();
+            }
+
+            function invertGrid(){
+
+                var tGrid = createArray(gridSize.width,gridSize.height);
+
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        tGrid[i][j] = getCellWithSafty(i, j);
+                    }
+                }
+
+                for(var i=0;i<gridSize.width;i++){
+                    for(var j=0;j<gridSize.height;j++){
+                        grid[i][j] = tGrid[i][j]==0?1:0;
                         updateGrid[i][j] = true;
                     }
                 }
@@ -305,7 +333,7 @@
 
                 for(var i=0;i<gridSize.width;i++){
                     for(var j=0;j<gridSize.height;j++){
-                        tGrid[i][j] = getCellWithSafty((h?gridSize.width-1-i:i), (v?gridSize.height-1-j:j), 0);
+                        tGrid[i][j] = getCellWithSafty((h?gridSize.width-1-i:i), (v?gridSize.height-1-j:j));
                     }
                 }
 
@@ -332,8 +360,8 @@
 
                 for(var i=0;i<gridSize.width;i++){
                     for(var j=0;j<gridSize.height;j++){
-                        grid[i][j] = false;
-                        updateGrid[i][j] = true;
+                        grid[i][j] = defaultCell;
+                        updateGrid[i][j] = defaultCell;
                     }
                 }
 
@@ -351,7 +379,7 @@
                 for(var i=0;i<gridSize.width;i++){
                     for(var j=0;j<gridSize.height;j++){
                         var n = numberOfneighbours(i, j);
-                        tempGrid[i][j] = ((!grid[i][j] && ruleBirth[n]) || (grid[i][j] && ruleSurvive[n]));
+                        tempGrid[i][j] = ((!grid[i][j] && ruleBirth[n]) || (grid[i][j] && ruleSurvive[n]))?1:0;
                         /*
                         if(n<2 || n>3){
                             tempGrid[i][j] = false;
@@ -368,7 +396,7 @@
                     for(var j=0;j<gridSize.height;j++){
                         updateGrid[i][j] = (grid[i][j] != tempGrid[i][j]);
                         grid[i][j] = tempGrid[i][j];
-                        tempGrid[i][j] = false;
+                        tempGrid[i][j] = defaultCell;
                     }
                 }
 
@@ -377,22 +405,22 @@
 
             function numberOfneighbours(x, y){
                 var n = 0;
-                n += getCellWithSafty(x-1, y-1, 0);
-                n += getCellWithSafty(x+1, y-1, 0);
-                n += getCellWithSafty(x-1, y+1, 0);
-                n += getCellWithSafty(x+1, y+1, 0);
-                n += getCellWithSafty(x-1, y, 0);
-                n += getCellWithSafty(x+1, y, 0);
-                n += getCellWithSafty(x, y-1, 0);
-                n += getCellWithSafty(x, y+1, 0);
+                n += getCellWithSafty(x-1, y-1);
+                n += getCellWithSafty(x+1, y-1);
+                n += getCellWithSafty(x-1, y+1);
+                n += getCellWithSafty(x+1, y+1);
+                n += getCellWithSafty(x-1, y);
+                n += getCellWithSafty(x+1, y);
+                n += getCellWithSafty(x, y-1);
+                n += getCellWithSafty(x, y+1);
                 return n;
             }
 
-            function getCellWithSafty(x, y, d){
+            function getCellWithSafty(x, y){
                 if(x>=0 && y>=0 && x<gridSize.width && y<gridSize.height){
                     return grid[x][y];
                 }
-                return d;
+                return defaultCell;
             }
 
             function firstDraw(){
@@ -420,11 +448,7 @@
                 for(var i=0;i<gridSize.width;i++){
                     for(var j=0;j<gridSize.height;j++){
                         if(updateGrid[i][j]){
-                            if(grid[i][j]){
-                                context.fillStyle = '#000000';
-                            }else{
-                                context.fillStyle = '#FFFFFF';
-                            }
+                            context.fillStyle = cellColors[grid[i][j]];
                             if(drawGridLines){
                                 context.fillRect(i*cellSize+1, j*cellSize+1, cellSize-1, cellSize-1);
                             }else{
@@ -835,7 +859,7 @@
                                 for(var j=0;j<h;j++){
                                     if(i>=0 && j>=0 && i<gridSize.width && j<gridSize.height){
                                         grid[i][j] = newGrid[i][j];
-                                        tempGrid[i][j] = false;
+                                        tempGrid[i][j] = defaultCell;
                                         updateGrid[i][j] = true;
                                     }else{
                                         outOfBounds = true;
@@ -892,10 +916,13 @@
                     <button onclick="changeCellSize(1)">+</button>
                     <button onclick="changeCellSize(-1)">-</button>
                     <br />
-                    <button onclick="saveFile()">Save File</button>
-                    <input type="file" id="inputFileLoad" value="" />
+                    <button onclick="invertGrid()">Invert</button>
                     <button id="rulesShowHideButton" onclick="toggleRuleTable()">Show Rules</button>
                     <input type="checkbox" onclick="toggleDrawGridLines()">Hide Grid</input>
+                    <input type="checkbox" onclick="toggleDefault()">Living Default</input>
+                    <br />
+                    <button onclick="saveFile()">Save File</button>
+                    <input type="file" id="inputFileLoad" value="" />
                     <br />
                 </td>
                 <td>
