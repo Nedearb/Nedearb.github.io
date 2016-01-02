@@ -13,6 +13,7 @@ p{
 
 div.tab_bar{
   padding: 15px 0px;
+  background-color: #30353f;
 }
 
 h2, h3{
@@ -64,7 +65,7 @@ div.link:hover{
 }
 
 div.tab{
-  font-size: 20px;
+  font-size: 12px;
   padding: 10px;
   font-weight: bold;
   font-size: 30px;
