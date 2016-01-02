@@ -3,29 +3,15 @@ body{
   background-color: #3b414e;
   font-family: sans-serif;
   color:white;
-  margin: 0px;
 }
 
 p{
   padding: 0px 10px;
 }
 
-@keyframes slideOpen{
-  from {
-    max-height: 0px;
-  }
-  to {
-    max-height: 500px;
-  }
-}
-
 div.tab_bar{
   background-color: #30353f;
   padding-left: 20px;
-  
-  animation-name: slideOpen;
-  animation-duration: .5s;
-  animation-iteration-count: 1;
 }
 
 h2, h3{
@@ -80,7 +66,6 @@ div.tab{
   font-size: 12px;
   padding: 10px;
   font-weight: bold;
-  font-size: 30px;
 
   -webkit-transition: all .3s ease;
   -moz-transition: all .3s ease;
