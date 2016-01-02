@@ -11,8 +11,18 @@ p{
 }
 
 @keyframes appear{
-  from {height: 0px;}
-  to {height: auto;}
+  from {
+    -webkit-transform:scaleY(0);
+    -moz-transform:scaleY(0);
+    -ms-transform:scaleY(0);
+    transform:scaleY(0);
+  }
+  to {
+    -webkit-transform:scaleY(1);
+    -moz-transform:scaleY(1);
+    -ms-transform:scaleY(1);
+    transform:scaleY(1);
+  }
 }
 
 div.tab_bar{
