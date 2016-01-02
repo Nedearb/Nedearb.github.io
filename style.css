@@ -88,11 +88,11 @@ div.page_wrapper{
 }
 
 #page_header{
-  
+  padding-left: 20px;
 }
 
 #page_body{
-  padding-left: 20px;
+  padding-left: 40px;
   flex: 1;
 }
 
