@@ -28,21 +28,20 @@ a{
     color:white;
 }
 
-a.inlineLink{
+div.inlineLink{
   color:white;
   font-weight: bold;
+  display:inline-block;
 }
 
-a.inlineLink:hover{
+div.inlineLink:hover{
   text-decoration: underline;
 }
 
 div.link{
     font-size: 16px;
     padding-left: 10px;
-}
-    
-div.link{
+  
     -webkit-transition: all .3s ease;
     -moz-transition: all .3s ease;
     transition: all .3s ease;
