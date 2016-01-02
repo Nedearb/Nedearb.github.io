@@ -10,7 +10,7 @@ p{
   padding: 0px 10px;
 }
 
-@keyframes appear{
+@keyframes slideOpen{
   from {
     max-height: 0px;
   }
@@ -23,7 +23,7 @@ div.tab_bar{
   background-color: #30353f;
   padding-left: 20px;
   
-  animation-name: appear;
+  animation-name: slideOpen;
   animation-duration: .5s;
   animation-iteration-count: 1;
 }
@@ -101,11 +101,11 @@ div.page_wrapper{
 }
 
 #page_header{
+  padding-top: 20px;
   padding-left: 20px;
 }
 
 #page_body{
-  padding-top: 20px;
   padding-left: 40px;
   flex: 1;
 }
