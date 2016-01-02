@@ -1,93 +1,104 @@
 body{
-    margin: 0px;
-    background-color: #3b414e;
-    font-family: sans-serif;
-    color:white;
-    padding-left: 20px;
-    margin: 0px;
+  margin: 0px;
+  background-color: #3b414e;
+  font-family: sans-serif;
+  color:white;
+  padding-left: 20px;
+  margin: 0px;
 }
 
 p{
-    padding: 0px 10px;
+  padding: 0px 10px;
 }
 
 div.tab_bar{
-    padding: 15px 0px;
+  padding: 15px 0px;
 }
 
 h2, h3{
-    margin: 0px;
+  margin: 0px;
 }
 
 p{
-    margin: 0px;
+  margin: 0px;
 }
 
 a{
-    text-decoration:none;
-    color:white;
+  text-decoration:none;
+  color:white;
 }
 
 div.inlineLink{
   color:white;
   font-weight: bold;
   display:inline-block;
+
+  -webkit-transition: all .3s ease;
+  -moz-transition: all .3s ease;
+  -ms-transition: all .3s ease;
+  transition: all .3s ease;
 }
 
 div.inlineLink:hover{
   text-decoration: underline;
+  
+  -webkit-transform:translateY(5px);
+  -moz-transform:translateY(5px);
+  -ms-transform:translateY(5px);
+  transform:translateY(5px);
 }
 
 div.link{
-    font-size: 16px;
-    padding-left: 10px;
-  
-    -webkit-transition: all .3s ease;
-    -moz-transition: all .3s ease;
-    transition: all .3s ease;
+  font-size: 16px;
+  padding-left: 10px;
+
+  -webkit-transition: all .3s ease;
+  -moz-transition: all .3s ease;
+  -ms-transition: all .3s ease;
+  transition: all .3s ease;
 }
 
 div.link:hover{
-    -webkit-transform:translateX(5px);
-    -moz-transform:translateX(5px);
-    -ms-transform:translateX(5px);
-    transform:translateX(5px);
+  -webkit-transform:translateX(5px);
+  -moz-transform:translateX(5px);
+  -ms-transform:translateX(5px);
+  transform:translateX(5px);
 }
-    
+
 div.tab{
-    font-size: 20px;
-    padding: 10px;
-    font-weight: bold;
-    font-size: 30px;
-    
-    -webkit-transition: all .3s ease;
-    -moz-transition: all .3s ease;
-    transition: all .3s ease;
+  font-size: 20px;
+  padding: 10px;
+  font-weight: bold;
+  font-size: 30px;
+
+  -webkit-transition: all .3s ease;
+  -moz-transition: all .3s ease;
+  transition: all .3s ease;
 }
 
 div.tab:hover{
-    -webkit-transform:translateY(5px);
-    -moz-transform:translateY(5px);
-    -ms-transform:translateY(5px);
-    transform:translateY(5px);
+  -webkit-transform:translateY(5px);
+  -moz-transform:translateY(5px);
+  -ms-transform:translateY(5px);
+  transform:translateY(5px);
 }
 
 div.page_wrapper{
-    height:100%;
-    display:flex;
-    flex-direction: column;
+  height:100%;
+  display:flex;
+  flex-direction: column;
 }
 
 #page_header{
-    
+
 }
 
 #page_body{
-    flex: 1;
+  flex: 1;
 }
 
 #page_footer{
-    position: absolute;
-    bottom: 0px;
-    margin-bottom: 20px;
+  position: absolute;
+  bottom: 0px;
+  margin-bottom: 20px;
 }
