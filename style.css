@@ -42,10 +42,10 @@ div.inlineLink{
 div.inlineLink:hover{
   text-decoration: underline;
   
-  -webkit-transform:translateY(5px);
-  -moz-transform:translateY(5px);
-  -ms-transform:translateY(5px);
-  transform:translateY(5px);
+  -webkit-transform:scaleX(5px);
+  -moz-transform:scaleX(5px);
+  -ms-transform:scaleX(5px);
+  transform:scaleX(5px);
 }
 
 div.link{
