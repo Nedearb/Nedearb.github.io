@@ -40,12 +40,10 @@ div.inlineLink{
 }
 
 div.inlineLink:hover{
-  text-decoration: underline;
-  
-  -webkit-transform:scale(.9);
-  -moz-transform:scale(.9);
-  -ms-transform:scale(.9);
-  transform:scale(.9);
+  -webkit-transform:scale(.9, 1);
+  -moz-transform:scale(.9, 1);
+  -ms-transform:scale(.9, 1);
+  transform:scale(.9, 1);
 }
 
 div.link{
