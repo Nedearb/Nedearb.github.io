@@ -12,6 +12,7 @@ p{
 
 div.tab_bar{
   background-color: #30353f;
+  padding-left: 20px;
 }
 
 h2, h3{
@@ -87,7 +88,7 @@ div.page_wrapper{
 }
 
 #page_header{
-  padding-left: 20px;
+  
 }
 
 #page_body{
