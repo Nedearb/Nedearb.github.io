@@ -3,7 +3,6 @@ body{
   background-color: #3b414e;
   font-family: sans-serif;
   color:white;
-  padding-left: 20px;
   margin: 0px;
 }
 
@@ -88,10 +87,11 @@ div.page_wrapper{
 }
 
 #page_header{
-
+  padding-left: 20px;
 }
 
 #page_body{
+  padding-left: 20px;
   flex: 1;
 }
 
