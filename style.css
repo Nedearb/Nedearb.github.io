@@ -11,8 +11,8 @@ p{
 }
 
 @keyframes appear{
-  from {height: 0%;}
-  to {height: 100%;}
+  from {height: 0px;}
+  to {height: auto;}
 }
 
 div.tab_bar{
@@ -20,8 +20,8 @@ div.tab_bar{
   padding-left: 20px;
   
   animation-name: appear;
-  animation-duration: 4s;
-  animation-iteration-count: 3;
+  animation-duration: 2s;
+  animation-iteration-count: 1;
 }
 
 h2, h3{
