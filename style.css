@@ -92,6 +92,7 @@ img.icon{
 }
 
 #page_body{
+  padding-top: 40px;
   padding-left: 40px;
   flex: 1;
 }
