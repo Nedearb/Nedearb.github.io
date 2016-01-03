@@ -16,4 +16,9 @@ function initImports(){
         div.innerHTML = this.response+div.innerHTML;
     });
     
+    read("/footer.html", function(){
+        var div = document.getElementById("page_wrapper");
+        div.innerHTML = div.innerHTML+this.response;
+    });
+    
 }
