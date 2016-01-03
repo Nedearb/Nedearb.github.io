@@ -9,11 +9,6 @@ p{
   padding: 0px 10px;
 }
 
-div.tab_bar{
-  background-color: #30353f;
-  padding-left: 20px;
-}
-
 h2, h3{
   margin: 0px;
 }
@@ -79,20 +74,20 @@ div.tab:hover{
   transform:translateY(5px);
 }
 
-div.page_wrapper{
-  height:100%;
-  display:flex;
-  flex-direction: column;
-}
-
 img.icon{
   vertical-align: middle;
   padding-right: 10px;
   padding-bottom: 4px;
 }
 
+#page_wrapper{
+  height:100%;
+  display:flex;
+  flex-direction: column;
+}
+
 #page_header{
-  padding-top: 20px;
+  background-color: #30353f;
   padding-left: 20px;
 }
 
@@ -102,6 +97,9 @@ img.icon{
 }
 
 #page_footer{
+  background-color: #30353f;
+  padding-left: 20px;
+  
   position: absolute;
   bottom: 0px;
   margin-bottom: 20px;
