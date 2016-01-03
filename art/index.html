@@ -6,8 +6,19 @@
             }
         </style>
         <link rel="stylesheet" type="text/css" href="../style.css">
-        <script type="text/javascript" src="/globaImpots.js"></script>
         <link rel="shortcut icon" type="image/png" href="/favicon.png"/>
+    </head>
+    <body>
+        <div id="page_wrapper">
+            <div id="page_body">
+                <h2>Ascii Art</h2>
+                <br />
+                <div id="art">
+
+                </div>
+            </div>
+        </div>
+        <script type="text/javascript" src="/globaImpots.js"></script>
         <script type="text/javascript">
 
             var artDiv;
@@ -62,17 +73,8 @@
                 readArt("Master Sword.txt", "Master Sword");
                 readArt("little bird.txt", "Little Bird");
             }
+          
+            initArt();
         </script>
-    </head>
-    <body onload="initArt();initImports();">
-        <div id="page_wrapper">
-            <div id="page_body">
-                <h2>Ascii Art</h2>
-                <br />
-                <div id="art">
-
-                </div>
-            </div>
-        </div>
     </body>
 </html>
