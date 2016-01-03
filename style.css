@@ -87,17 +87,20 @@ img.icon{
 }
 
 #page_header{
+  width: 100%;
   background-color: #30353f;
   padding-left: 20px;
 }
 
 #page_body{
-  padding-top: 40px;
+  width: 100%;
+  padding-top: 20px;
   padding-left: 40px;
   flex: 1;
 }
 
 #page_footer{
+  width: 100%;
   background-color: #30353f;
   padding-left: 20px;
   
