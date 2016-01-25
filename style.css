@@ -57,6 +57,32 @@ div.link:hover{
   transform:translateX(5px);
 }
 
+div.leftlink{
+  font-size: 16px;
+  padding-left: 10px;
+  float: right;
+
+  -webkit-transition: all .3s ease;
+  -moz-transition: all .3s ease;
+  -ms-transition: all .3s ease;
+  transition: all .3s ease;
+}
+
+div.leftlink:hover{
+  -webkit-transform:translateX(-5px);
+  -moz-transform:translateX(-5px);
+  -ms-transform:translateX(-5px);
+  transform:translateX(-5px);
+}
+
+table td.skrink{
+    white-space:nowrap
+}
+
+table td.expand {
+    width: 99%
+}
+
 div.tab{
   font-size: 20px;
   padding: 10px;
@@ -81,22 +107,21 @@ img.icon{
 }
 
 #page_wrapper{
-  height:100%;
-  display:flex;
-  flex-direction: column;
+  width: 100%;
+  height: 100%;
 }
 
 #page_header{
   width: 100%;
   background-color: #30353f;
   padding-left: 20px;
+  padding-right: 20px;
 }
 
 #page_body{
   width: 100%;
   padding-top: 20px;
   padding-left: 40px;
-  flex: 1;
 }
 
 #page_footer{
