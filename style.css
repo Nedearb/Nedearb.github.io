@@ -5,6 +5,30 @@ body{
   color:white;
 }
 
+button{
+  background-color: #464d5d;
+  color:white;
+  border-radius: 4px
+}
+
+textarea{
+  background-color: #464d5d;
+  color:white;
+  border-radius: 4px
+}
+
+input{
+  background-color: #464d5d;
+  color:white;
+  border-radius: 4px
+}
+
+select{
+  background-color: #464d5d;
+  color:white;
+  border-radius: 4px
+}
+
 p{
   padding: 0px 10px;
 }

@@ -1,0 +1,870 @@
+<html>
+
+<head>
+    <title>Cellular Automation</title>
+    
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+
+    <link href="jsoneditor/jsoneditor.min.css" rel="stylesheet" type="text/css">
+    <script src="jsoneditor/jsoneditor.min.js"></script>
+    
+    <script type="text/javascript" src="ntc.js"></script>
+    
+    <script type="text/javascript">
+        //Constants:
+        var neighborhoodPatterns = {
+            moore: "moore",
+            vonNeumann: "vonNeumann"
+        }
+        var neighborhoodCalcs = {
+            sum: "sum",
+            average: "mean",
+            min: "min",
+            max: "max"
+        }
+        var defColors = [
+            "#FFFFFF",
+            "#000000",
+            "#0000FF",
+            "#00FF00",
+            "#FF0000",
+            "#FFFF00",
+            "#FF00FF",
+            "#00FFFF",
+        ]
+
+        var rulePresets = {
+            life: {
+                name: "Conway's Game of Life",
+                neighborPattern: neighborhoodPatterns.moore,
+                neighborhoodSize: 1,
+                neighborhoodCalculation: neighborhoodCalcs.sum,
+                state: {
+                    0: {
+                        neighborEquals:{
+                            3: 1,
+                        },
+                        def: 0,
+                        color: '#FFFFFF',
+                    },
+                    1: {
+                        neighborEquals:{
+                            2: 1,
+                            3: 1,
+                        },
+                        def: 0,
+                        color: '#000000',
+                    },
+                    def: {
+                        def: 0,
+                        color: '#FF0000',
+                    }
+                },
+                defaultCell: 0,
+                lineColor: '#DDDDDD',
+            },
+            replicator: {
+                name: "Replicator",
+                neighborPattern: neighborhoodPatterns.moore,
+                neighborhoodSize: 1,
+                neighborhoodCalculation: neighborhoodCalcs.sum,
+                state: {
+                    0: {
+                        neighborEquals:{
+                            1: 1,
+                            3: 1,
+                            5: 1,
+                            7: 1,
+                        },
+                        def: 0,
+                        color: '#FFFFFF',
+                    },
+                    1: {
+                        neighborEquals:{
+                            1: 1,
+                            3: 1,
+                            5: 1,
+                            7: 1,
+                        },
+                        def: 0,
+                        color: '#000000',
+                    },
+                    def: {
+                        def: 0,
+                        color: '#FF0000',
+                    }
+                },
+                defaultCell: 0,
+                lineColor: '#DDDDDD',
+            },
+        }
+
+        var currentRule = rulePresets.life;
+
+
+        //Variables:
+        
+        var editor;
+
+        var playing = false;
+        var interval;
+
+        var fpsCap = 10;
+
+        var step = 0;
+
+        var gridSize = {
+            width: 10,
+            height: 10
+        };
+
+        var cellSize = 10;
+        var lineWidth = 1;
+
+        var drawGridLines = true;
+
+        var grid;
+        var temoGrid;
+        var updateGrid;
+
+        var mouseDown = false;
+        var firstPaint = 1;
+        var secondPaint = 0;
+        var currentPaint = firstPaint;
+
+
+        //References:
+        var canvas;
+        var context;
+
+
+        //Calculation Functions:
+
+        function createArray(length) {
+            var arr = new Array(length || 0),
+                i = length;
+
+            if (arguments.length > 1) {
+                var args = Array.prototype.slice.call(arguments, 1);
+                while (i--) arr[length - 1 - i] = createArray.apply(this, args);
+            }
+
+            return arr;
+        }
+
+        function nextStep() {
+            step++;
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    
+                    var n = neighbourValue(i, j);
+                    
+                    if(currentRule.state[grid[i][j]] == undefined){
+                        tempGrid[i][j] = currentRule.state.def;
+                        continue;
+                    }else{
+                        if(currentRule.state[grid[i][j]].neighborEquals){
+                            if(currentRule.state[grid[i][j]].neighborEquals[n]){
+                                tempGrid[i][j] = currentRule.state[grid[i][j]].neighborEquals[n];
+                                continue;
+                            }
+                        }
+                        
+                        if(currentRule.state[grid[i][j]].neighborInRange){
+                            for(var r in currentRule.state[grid[i][j]].neighborInRange){
+                                if(n >= r.min && n <= r.max){
+                                    tempGrid[i][j] = r.val;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    
+                    tempGrid[i][j] = grid[i][j];
+                    
+                    //tempGrid[i][j] = currentRule.state[grid[i][j]] != undefined ? (currentRule.state[grid[i][j]].neighborEquals[n] != undefined ? (currentRule.state[grid[i][j]].neighborEquals[n]) : currentRule.state[grid[i][j]].neighborEquals.def) : currentRule.state.def;
+                }
+            }
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    updateGrid[i][j] = (grid[i][j] != tempGrid[i][j]);
+                    grid[i][j] = tempGrid[i][j];
+                    tempGrid[i][j] = currentRule.defaultCell;
+                }
+            }
+
+            redraw();
+        }
+
+
+        function neighbourValue(x, y) {
+            if (currentRule.neighborhoodCalculation == neighborhoodCalcs.sum) {
+                var n = 0;
+                neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
+                    n += getCellWithSafty(i, j);
+                });
+                return n;
+            } else if (currentRule.neighborhoodCalculation == neighborhoodCalcs.average) {
+                var n = 0;
+                var q = 0;
+                neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
+                    n += getCellWithSafty(i, j);
+                    q += 1;
+                });
+                return n / q;
+            } else if (currentRule.neighborhoodCalculation == neighborhoodCalcs.min) {
+                var n = 0;
+                neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
+                    n = Math.min(n, getCellWithSafty(i, j));
+                });
+                return n;
+            } else if (currentRule.neighborhoodCalculation == neighborhoodCalcs.max) {
+                var n = 0;
+                neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
+                    n = Math.max(n, getCellWithSafty(i, j));
+                });
+                return n;
+            } else {
+                console.log("Neighborhood Calculation not recognised : ", currentRule.neighborhoodCalculation);
+                return 0;
+            }
+        }
+
+
+        function neighbors(x, y, r, func) {
+            if (currentRule.neighborPattern == neighborhoodPatterns.moore) {
+                for (var i = x - r; i <= x + r; i++) {
+                    for (var j = y - r; j <= y + r; j++) {
+                        if (!(i == x && j == y)) {
+                            func(i, j);
+                        }
+                    }
+                }
+            } else if (currentRule.neighborPattern == neighborhoodPatterns.vonNeumann) {
+                for (var i = -r; i <= r; i++) {
+                    var ri = r - Math.abs(i);
+                    for (var j = -ri; j <= ri; j++) {
+                        func(i, j);
+                    }
+                }
+            } else {
+                console.log("Neighborhood Pattern not recognised : ", currentRule.neighborPattern);
+            }
+        }
+
+        function getCellWithSafty(x, y) {
+            if (x >= 0 && y >= 0 && x < gridSize.width && y < gridSize.height) {
+                return grid[x][y];
+            }
+            return currentRule.defaultCell;
+        }
+
+        function updateInterval() {
+            clearInterval(interval);
+            if (fpsCap > 0) {
+                interval = setInterval(loopIteration, 1000 / fpsCap);
+            }
+        }
+
+        function loopIteration() {
+            if (playing) {
+                nextStep();
+            }
+        }
+
+        function clearGrid() {
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    grid[i][j] = currentRule.defaultCell;
+                    updateGrid[i][j] = true;
+                }
+            }
+
+            step = 0;
+
+            firstDraw();
+
+            setPlaying(false);
+        }
+
+        function shiftGrid(x, y) {
+
+            var tGrid = createArray(gridSize.width, gridSize.height);
+
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    tGrid[i][j] = getCellWithSafty(i - x, j - y);
+                }
+            }
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    grid[i][j] = tGrid[i][j];
+                    updateGrid[i][j] = true;
+                }
+            }
+
+            redraw();
+        }
+
+        function flipGrid(h, v) {
+            var tGrid = createArray(gridSize.width, gridSize.height);
+
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    tGrid[i][j] = getCellWithSafty((h ? gridSize.width - 1 - i : i), (v ? gridSize.height - 1 - j : j));
+                }
+            }
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    grid[i][j] = tGrid[i][j];
+                    updateGrid[i][j] = true;
+                }
+            }
+
+            redraw();
+        }
+
+        function rotateGrid(cw) {
+            var tGrid = createArray(gridSize.width, gridSize.height);
+
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    tGrid[i][j] = getCellWithSafty(cw ? j : gridSize.width - 1 - j, !cw ? i : gridSize.width - 1 - i);
+                }
+            }
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    grid[i][j] = tGrid[i][j];
+                    updateGrid[i][j] = true;
+                }
+            }
+
+            redraw();
+        }
+
+
+
+        //Rendering Functions:
+
+        function setGridSize() {
+            gridSize.width = Math.max(Math.floor((canvas.width - 1) / cellSize), 1);
+            gridSize.height = Math.max(Math.floor((canvas.height - 1) / cellSize), 1);
+        }
+
+        function firstDraw() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.strokeStyle = currentRule.lineColor;
+
+            context.lineWidth = currentRule.lineWidth;
+
+            redraw();
+
+            if (cellSize > 1 && drawGridLines) {
+                for (var i = 0; i < gridSize.width; i++) {
+                    for (var j = 0; j < gridSize.height; j++) {
+                        context.strokeRect(i * cellSize + .5, j * cellSize + .5, cellSize, cellSize);
+                    }
+                }
+            }
+
+        }
+
+        function redraw() {
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    if (updateGrid[i][j]) {
+                        context.fillStyle = currentRule.state[grid[i][j]] != undefined ? currentRule.state[grid[i][j]].color : currentRule.state.def.color;
+                        if (drawGridLines) {
+                            context.fillRect(i * cellSize + 1, j * cellSize + 1, cellSize - 1, cellSize - 1);
+                        } else {
+                            context.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+                        }
+                        updateGrid[i][j] = false;
+                    }
+                }
+            }
+        }
+
+
+
+
+        //Intreraction Functions:
+
+        function initalize() {
+            window.addEventListener("keypress", onKeyPress, false);
+            window.addEventListener("resize", onResizeWindow, false);
+
+            document.getElementById("inputFps").value = fpsCap;
+            
+            
+            editor = new JSONEditor(document.getElementById("jsoneditor"), {});
+
+
+            initCanvas();
+
+            updateInterval();
+
+            updateRuleUi();
+
+            onResizeWindow();
+        }
+
+        function changeCurrentRule(n) {
+            currentRule = rulePresets[n];
+
+            for (var j = 0; j < gridSize.height; j++) {
+                for (var i = 0; i < gridSize.width; i++) {
+                    updateGrid[i][j] = true;
+                }
+            }
+
+            updateRuleUi();
+        }
+            
+        function updateRuleUi(){
+
+            var selectPreset = document.getElementById("inputRulePreset");
+            selectPreset.options.length = 0;
+            var o;
+            for (o in rulePresets) {
+                var option = document.createElement("option");
+                option.text = rulePresets[o].name;
+                option.value = o;
+                selectPreset.add(option);
+            }
+            
+            var n = "";
+            for(var i = 0; i < Object.keys(rulePresets).length; i++){
+                if(rulePresets[Object.keys(rulePresets)[i]] == currentRule){
+                    n = Object.keys(rulePresets)[i];
+                }
+            }
+            
+            selectPreset.value = n;
+
+            var selectPaint1 = document.getElementById("inputPaint1");
+            selectPaint1.options.length = 0;
+            for (var p in currentRule.state) {
+                if (p != "def") {
+                    var option = document.createElement("option");
+                    option.text = p + currentRule.state[p].color ? (" (" + ntc.name(currentRule.state[p].color)[1] + ")") : "(No color)";
+                    option.value = p;
+                    selectPaint1.add(option);
+                }
+            }
+            selectPaint1.value = firstPaint;
+
+            var selectPaint2 = document.getElementById("inputPaint2");
+            selectPaint2.options.length = 0;
+            for (var p in currentRule.state) {
+                if (p != "def") {
+                    var option = document.createElement("option");
+                    option.text = p + currentRule.state[p].color ? (" (" + ntc.name(currentRule.state[p].color)[1] + ")") : "(No color)";
+                    option.value = p;
+                    selectPaint2.add(option);
+                }
+            }
+            selectPaint2.value = secondPaint;
+            
+            
+            onResizeWindow();
+
+            redraw();
+        }
+
+        function initCanvas() {
+            canvas = document.getElementById("canvasMain");
+            context = canvas.getContext('2d');
+
+            //canvas.width = window.innerWidth;
+            //canvas.height = window.innerHeight - document.getElementById("controlsDiv").offsetHeight;
+
+            canvas.onmousedown = onDownCanvas;
+            canvas.onmouseup = onUpCanvas;
+            canvas.onmousemove = onMoveCanvas;
+
+            canvas.addEventListener('contextmenu', function (event) {
+                event.preventDefault();
+            }, false);
+
+            setGridSize();
+
+            grid = createArray(gridSize.width, gridSize.height);
+            tempGrid = createArray(gridSize.width, gridSize.height);
+            updateGrid = createArray(gridSize.width, gridSize.height);
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    updateGrid[i][j] = true;
+                    grid[i][j] = currentRule.defaultCell;
+                    tempGrid[i][j] = currentRule.defaultCell;
+                }
+            }
+
+            firstDraw();
+            
+            onResizeWindow();
+        }
+
+
+        function getMousePosition(event) {
+            var x = event.x;
+            var y = event.y;
+
+            x -= canvas.offsetLeft;
+            y -= canvas.offsetTop;
+
+            return {
+                x: x,
+                y: y
+            }
+        }
+
+
+        function onDownCanvas(event) {
+            event.preventDefault();
+            mouseDown = true;
+            var mousePosition = getMousePosition(event);
+            var x = Math.floor((mousePosition.x + window.scrollX) / cellSize);
+            var y = Math.floor((mousePosition.y + window.scrollY) / cellSize);
+            if (x >= 0 && y >= 0 && x < gridSize.width && y < gridSize.height) {
+                updateGrid[x][y] = true;
+                if (event.button == 0) {
+                    currentPaint = grid[x][y] == firstPaint ? currentRule.defaultCell : firstPaint;
+                } else if (event.button == 2) {
+                    currentPaint = grid[x][y] == secondPaint ? currentRule.defaultCell : secondPaint;
+                }
+                grid[x][y] = currentPaint;
+            }
+            redraw();
+            if(document.activeElement){
+                document.activeElement.blur();
+            }
+        }
+
+        function onUpCanvas(event) {
+            mouseDown = false;
+        }
+
+        function onMoveCanvas(event) {
+            event.preventDefault();
+            if (mouseDown) {
+                var mousePosition = getMousePosition(event);
+                var x = Math.floor((mousePosition.x + window.scrollX) / cellSize);
+                var y = Math.floor((mousePosition.y + window.scrollY) / cellSize);
+                if (x >= 0 && y >= 0 && x < gridSize.width && y < gridSize.height) {
+                    updateGrid[x][y] = true;
+                    grid[x][y] = currentPaint;
+                }
+
+                redraw();
+            }
+        }
+
+        function onKeyPress(event) {
+            //console.log(document.activeElement.nodeName);
+            if (document.activeElement.nodeName == "BODY") {
+                event.preventDefault();
+                if (event.keyCode == 97) { //a
+                    shiftGrid(-1, 0);
+                } else if (event.keyCode == 119) { //w
+                    shiftGrid(0, -1);
+                } else if (event.keyCode == 100) { //d
+                    shiftGrid(1, 0);
+                } else if (event.keyCode == 115) { //s
+                    shiftGrid(0, 1);
+                } else if (event.keyCode == 113) { //q
+                    flipGrid(false, true);
+                } else if (event.keyCode == 101) { //e
+                    flipGrid(true, false);
+                } else if (event.keyCode == 65) { //A
+                    shiftGrid(-10, 0);
+                } else if (event.keyCode == 87) { //W
+                    shiftGrid(0, -10);
+                } else if (event.keyCode == 68) { //D
+                    shiftGrid(10, 0);
+                } else if (event.keyCode == 83) { //S
+                    shiftGrid(0, 10);
+                } else if (event.keyCode == 81) { //Q
+                    rotateGrid(false);
+                } else if (event.keyCode == 69) { //E
+                    rotateGrid(true);
+                } else if (event.keyCode == 32) { //space
+                    setPlaying(!playing);
+                } else if (event.keyCode == 110) { //n
+                    nextStep();
+                }
+            }
+        }
+
+        function onResizeWindow() {
+            canvas.width = window.innerWidth - 24;
+            canvas.height = window.innerHeight - document.getElementById("controlsDiv").clientHeight - 16;
+
+            smallSize = {
+                width: gridSize.width,
+                height: gridSize.height
+            }
+
+            setGridSize();
+
+            smallSize.width = Math.min(smallSize.width, gridSize.width);
+            smallSize.height = Math.min(smallSize.height, gridSize.height);
+
+            var oldGrid = createArray(gridSize.width, gridSize.height);
+            var oldTempGrid = createArray(gridSize.width, gridSize.height);
+
+            for (var i = 0; i < gridSize.width; i++) {
+                for (var j = 0; j < gridSize.height; j++) {
+                    oldGrid[i][j] = currentRule.defaultCell;
+                    oldTempGrid[i][j] = currentRule.defaultCell;
+                }
+            }
+            for (var i = 0; i < smallSize.width; i++) {
+                for (var j = 0; j < smallSize.height; j++) {
+                    oldGrid[i][j] = grid[i][j];
+                    oldTempGrid[i][j] = tempGrid[i][j];
+                }
+            }
+
+            grid = createArray(gridSize.width, gridSize.height);
+            tempGrid = createArray(gridSize.width, gridSize.height);
+            updateGrid = createArray(gridSize.width, gridSize.height);
+
+            for (var j = 0; j < gridSize.height; j++) {
+                for (var i = 0; i < gridSize.width; i++) {
+                    grid[i][j] = oldGrid[i][j];
+                    tempGrid[i][j] = oldTempGrid[i][j];
+                    updateGrid[i][j] = true;
+                }
+            }
+
+            mouseDown = false;
+
+            firstDraw();
+        }
+
+        function setPlaying(p) {
+            playing = p;
+            document.getElementById("buttonPlayPause").innerHTML = playing ? "Pause" : "Play";
+        }
+
+        function inputChanged(element) {
+            if (element.id == "inputFps") {
+                fpsCap = element.value;
+                updateInterval();
+            } else if (element.id == "inputRulePreset") {
+                changeCurrentRule(element.options[element.selectedIndex].value);
+            } else if (element.id == "inputPaint1") {
+                firstPaint = element.options[element.selectedIndex].value;
+            } else if (element.id == "inputPaint2") {
+                secondPaint = element.options[element.selectedIndex].value;
+            }
+        }
+        
+        function toggleTranformationTable(){
+            var transTable = document.getElementById("transformationTable");
+            transTable.style.display = transTable.style.display == "none" ? "block" : "none";
+            var button = document.getElementById("buttonToggleTranformationTable");
+            button.innerHTML = transTable.style.display == "none" ? "&#8644;&#8645;" : "Hide" ;
+        }
+        
+        function ruleToTextbox(){
+            var nameT = document.getElementById("inputTextNewRuleName");
+            //var codeT = document.getElementById("inputTextNewRule");
+            var n = "";
+            for(var i = 0; i < Object.keys(rulePresets).length; i++){
+                if(rulePresets[Object.keys(rulePresets)[i]] == currentRule){
+                    n = Object.keys(rulePresets)[i];
+                    break;
+                }
+            }
+            nameT.value = n;
+            editor.set(/*JSON.stringify(*/currentRule/*, null, 2)*/);
+        }
+        
+        function textboxToRule(){
+            var nameT = document.getElementById("inputTextNewRuleName");
+            //var codeT = document.getElementById("inputTextNewRule");
+            rulePresets[nameT.value] = /*JSON.parse(*/editor.get()/*)*/;
+            changeCurrentRule(nameT.value);
+        }
+        
+        function popInOut(){
+            var holderUpper = document.getElementById("holderTextAreaUpper");
+            var holderLower = document.getElementById("holderTextAreaLower");
+            
+            var temp = holderLower.innerHTML;
+            holderLower.innerHTML = holderUpper.innerHTML;
+            holderUpper.innerHTML = temp;
+            onResizeWindow();
+        }
+        
+        function showHideEditor(){
+            var buttonSH = document.getElementById("buttonShowHidEditor");
+            var buttonPIO = document.getElementById("buttonPopInOut");
+            var holderUpper = document.getElementById("holderTextAreaUpper");
+            var holderLower = document.getElementById("holderTextAreaLower");
+            buttonPIO.style.display = buttonPIO.style.display == "none" ? "block" : "none";
+            holderUpper.style.display = holderUpper.style.display == "none" ? "block" : "none";
+            holderLower.style.display = holderLower.style.display == "none" ? "block" : "none";
+        }
+        
+    </script>
+</head>
+
+<body onload="initalize();">
+
+    <div id="holderTextAreaUpper", style="position: absolute;z-index: 10;">
+        
+    </div>
+    
+    <canvas id="canvasMain">
+        Canvas not supported, upgrade your browser dude.
+    </canvas>
+    <div id="controlsDiv">
+        <table>
+            <tr>
+                <td>
+                    <table>
+                        <tr>
+                            <td>
+                                <button id="buttonPlayPause" onClick="setPlaying(!playing);" style="width:4em;" title="Play / Pause (space)">Play</button>
+                            </td>
+                            <td>
+                                <button id="buttonNext" onClick="setPlaying(false);nextStep();" title="Next Step (n)">Next</button>
+                            </td>
+                            <td>
+                                <button id="buttonToggleTranformationTable" onClick="toggleTranformationTable();">Hide</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <button id="buttonClear" onClick="clearGrid();" title="Clear">Clear</button>
+                            </td>
+                            <td colspan="2">
+                                FPS:
+                                <input id="inputFps" type="number" onChange="inputChanged(this);" style="width:4em;">
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table id="transformationTable">
+                        <tr>
+                            <td>
+                                <button id="buttonVFlip" onClick="flipGrid(false, true);" title="Flip Vertially (q)">&#8645;</button>
+                            </td>
+                            <td>
+                                <button id="buttonUp" onClick="shiftGrid(0, -1);" title="Shift up 1 (w)">&#8593;</button>
+                            </td>
+                            <td>
+                                <button id="buttonHFlip" onClick="flipGrid(true, false);" title="Flip Horizonatally (e)">&#8644;</button>
+                            </td>
+                            <td>|
+                            </td>
+                            <td>
+                                <button id="buttonCCWRotate" onClick="rotateGrid(false);" title="Rotate Counter-Clockwise (Q)">&#8634;</button>
+                            </td>
+                            <td>
+                                <button id=" buttonUpTen" onClick="shiftGrid(0, -10);" title="Shift Up 10 (W)">&#8607;</button>
+                            </td>
+                            <td>
+                                <button id="buttonCWRotate" onClick="rotateGrid(true);" title="Rotate Clickwise (E)">&#8635;</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <button id="buttonLeft" onClick="shiftGrid(-1, 0); " title="Shift left 1 (a)">&#8592;</button>
+                            </td>
+                            <td>
+                                <button id="buttonDown" onClick="shiftGrid(0, 1);" title="Shift down 1 (s)">&#8595;</button>
+                            </td>
+                            <td>
+                                <button id="buttonRight" onClick="shiftGrid(1, 0);" title="Shift right 1 (d)">&#8594;</button>
+                            </td>
+                            <td>|
+                            </td>
+                            <td>
+                                <button id="buttonLeftTen" onClick="shiftGrid(-10, 0);" title="Shift left 10 (A)">&#8606;</button>
+                            </td>
+                            <td>
+                                <button id="buttonDownTen" onClick="shiftGrid(0, 10);" title="Shift down 10 (S)">&#8609;</button>
+                            </td>
+                            <td>
+                                <button id="buttonRightTen" onClick="shiftGrid(10, 0);" title="Shift right 10 (D)">&#8608;</button>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td>
+                    <table>
+                        <tr>
+                            <td colspan="2">
+                                <select id="inputRulePreset" onChange="inputChanged(this);">
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Left:
+                                <select id="inputPaint1" onChange="inputChanged(this);">
+                                </select>
+                            </td>
+                            <td>
+                                Right:
+                                <select id="inputPaint2" onChange="inputChanged(this);">
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td>
+                    <div id="holderTextAreaUpper">
+                    
+                    </div>
+                    
+                    <input type="text" id="inputTextNewRuleName"/>
+                </td>
+                <td>
+                    <button onClick="ruleToTextbox();" title="Load from the current">&#8595; Edit Rule</button>
+                </td>
+                <td>
+                    <button onClick="textboxToRule();" title="Load from the current">&#8593; Load Rule</button>
+                </td>
+                <td>
+                    <button id="buttonShowHidEditor" onClick="showHideEditor();" title="Hide/Show editor">Hide/Show editor</button>
+                </td>
+                <td>
+                    <button id="buttonPopInOut" onClick="popInOut();" title="Move editor">Move editor</button>
+                </td>
+                <td>
+                    Library Sources:
+                    <a class="link" href="https://github.com/josdejong/jsoneditor">JSON Editor</a>
+                    , 
+                    <a class="link" href="http://chir.ag/projects/ntc/">NTC</a>
+                </td>
+                
+            </tr>
+        </table>
+    </div>
+    <div id="holderTextAreaLower">
+        <div id="jsoneditor" style="width: 400px; height: 400px;"></div>
+    </div>
+
+</body>
+
+</html>
