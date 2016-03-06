@@ -456,7 +456,7 @@
             for (var p in currentRule.state) {
                 if (p != "def") {
                     var option = document.createElement("option");
-                    option.text = p + currentRule.state[p].color ? (" (" + ntc.name(currentRule.state[p].color)[1] + ")") : "(No color)";
+                    option.text = p + (currentRule.state[p].color ? (" (" + ntc.name(currentRule.state[p].color)[1] + ")") : " (No color)");
                     option.value = p;
                     selectPaint1.add(option);
                 }
@@ -468,7 +468,7 @@
             for (var p in currentRule.state) {
                 if (p != "def") {
                     var option = document.createElement("option");
-                    option.text = p + currentRule.state[p].color ? (" (" + ntc.name(currentRule.state[p].color)[1] + ")") : "(No color)";
+                    option.text = p + (currentRule.state[p].color ? (" (" + ntc.name(currentRule.state[p].color)[1] + ")") : " (No color)");
                     option.value = p;
                     selectPaint2.add(option);
                 }
