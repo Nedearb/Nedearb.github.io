@@ -2,14 +2,14 @@
 
 <head>
     <title>Cellular Automation</title>
-    
+
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 
     <link href="jsoneditor/jsoneditor.min.css" rel="stylesheet" type="text/css">
     <script src="jsoneditor/jsoneditor.min.js"></script>
-    
+
     <script type="text/javascript" src="ntc.js"></script>
-    
+
     <script type="text/javascript">
         //Constants:
         var neighborhoodPatterns = {
@@ -21,6 +21,10 @@
             average: "mean",
             min: "min",
             max: "max"
+        }
+        var edgeStyles = {
+            defaultCell: "defaultCell",
+            wrap: "wrap",
         }
         var defColors = [
             "#FFFFFF",
@@ -34,43 +38,46 @@
         ]
 
         var rulePresets = {
-            life: {
-                name: "Conway's Game of Life",
-                neighborPattern: neighborhoodPatterns.moore,
-                neighborhoodSize: 1,
-                neighborhoodCalculation: neighborhoodCalcs.sum,
+            life: fromBirthSurvive("Conway's Life", "B3/S23"),
+            lifeWithoutDeath: fromBirthSurvive("Life without Death", "B3/S012345678"),
+            replicator: fromBirthSurvive("Replicator", "B1357/S1357"),
+            seeds: fromBirthSurvive("Seeds", "B2/S"),
+            diamoeba: fromBirthSurvive("Diamoeba", "B35678/S5678"),
+            anneal: fromBirthSurvive("Anneal", "B4678/S35678", '#00FF00', '#008000'),
+            dayAndNight: fromBirthSurvive("Day & Night", "B3678/S34678"),
+            morley: fromBirthSurvive("Morley", "B368/S245"),
+            twoByTwo: fromBirthSurvive("2x2", "B36/S125"),
+            b25s4: fromBirthSurvive("B25/S4", "B25/S4"),
+            coral: fromBirthSurvive("Coral", "S45678/B3"),
+            gnarl: fromBirthSurvive("Gnarl", "1/1"),
+            maze: fromBirthSurvive("Maze", "S12345/B3"),
+            briansBrain: {
+                name: "Brian's Brain",
                 state: {
                     0: {
-                        neighborEquals:{
-                            3: 1,
-                        },
-                        def: 0,
-                        color: '#FFFFFF',
-                    },
-                    1: {
-                        neighborEquals:{
+                        neighborEquals: {
                             2: 1,
-                            3: 1,
                         },
                         def: 0,
                         color: '#000000',
                     },
-                    def: {
+                    1: {
+                        def: 2,
+                        color: '#FFFFFF',
+                    },
+                    2: {
+                        neighborValue: 0,
                         def: 0,
-                        color: '#FF0000',
+                        color: '#0000FF',
                     }
                 },
-                defaultCell: 0,
-                lineColor: '#DDDDDD',
+                lineColor: '#808080',
             },
-            replicator: {
-                name: "Replicator",
-                neighborPattern: neighborhoodPatterns.moore,
-                neighborhoodSize: 1,
-                neighborhoodCalculation: neighborhoodCalcs.sum,
+            fredkin: {
+                name: "Fredkin",
                 state: {
                     0: {
-                        neighborEquals:{
+                        neighborEquals: {
                             1: 1,
                             3: 1,
                             5: 1,
@@ -80,31 +87,241 @@
                         color: '#FFFFFF',
                     },
                     1: {
-                        neighborEquals:{
-                            1: 1,
-                            3: 1,
-                            5: 1,
-                            7: 1,
+                        neighborEquals: {
+                            0: 1,
+                            2: 1,
+                            4: 1,
+                            6: 1,
+                            8: 1,
                         },
                         def: 0,
                         color: '#000000',
                     },
+                }
+            },
+            banks: { //C0,NN,S3babbabbabba3b,B7ab3aba3b
+                name: "Banks",
+                state: {
+                    0: {
+                        neighborsAre: [
+                            {N:1,E:1,S:1,W:0,val:1},
+                            {N:0,E:1,S:1,W:1,val:1},
+                            {N:1,E:1,S:0,W:1,val:1},
+                            {N:1,E:0,S:1,W:1,val:1},
+                        ],
+                        def:0,
+                        color:"#FFFFFF",
+                    },
+                    1: {
+                        neighborsAre: [
+                            {N:1,E:1,S:0,W:0,val:0},
+                            {N:0,E:1,S:1,W:0,val:0},
+                            {N:0,E:0,S:1,W:1,val:0},
+                            {N:1,E:0,S:0,W:1,val:0},
+                        ],
+                        def:1,
+                        color:"#000000",
+                    }
+                }
+            }
+        }
+
+        for (var r in rulePresets) {
+            verifyRule(rulePresets[r]);
+        }
+
+        function componentToHex(c) {
+            var hex = c.toString(16);
+            return hex.length == 1 ? "0" + hex : hex;
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+        }
+
+        function hexToRgb(hex) {
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function fromBirthSurvive(name, code, deadColor, aliveColor, lineColor) {
+
+            if (deadColor == undefined) {
+                deadColor = '#FFFFFF';
+            }
+
+            if (aliveColor == undefined) {
+                var dc = hexToRgb(deadColor);
+                var ac = {
+                    r: (255 - dc.r),
+                    g: (255 - dc.g),
+                    b: (255 - dc.b),
+                }
+
+                aliveColor = rgbToHex(ac.r, ac.g, ac.b);
+            }
+
+            if (lineColor == undefined) {
+                var ac = hexToRgb(aliveColor);
+                var dc = hexToRgb(deadColor);
+
+                var lc = {
+                    r: Math.floor((ac.r + dc.r) / 2),
+                    g: Math.floor((ac.g + dc.g) / 2),
+                    b: Math.floor((ac.b + dc.b) / 2),
+                }
+
+                lineColor = rgbToHex(lc.r, lc.g, lc.b);
+            }
+
+            var a = {};
+            var b = {};
+
+            var m = 0;
+
+            var cc = code.split('');
+
+            for (var c in cc) {
+                if (cc[c] == 'B' || cc[c] == 'b') {
+                    m = 0;
+                } else if (cc[c] == 'S' || cc[c] == 's') {
+                    m = 1;
+                } else if (cc[c] == '/') {
+                    m = 1;
+                } else if (Number(cc[c]) != undefined) {
+                    if (m == 0) {
+                        a[Number(cc[c])] = 1;
+                    } else if (m == 1) {
+                        b[Number(cc[c])] = 1;
+                    }
+                }
+            }
+
+
+            return {
+                name: name,
+                state: {
+                    0: {
+                        neighborEquals: a,
+                        def: 0,
+                        color: deadColor,
+                    },
+                    1: {
+                        neighborEquals: b,
+                        def: 0,
+                        color: aliveColor,
+                    },
                     def: {
                         def: 0,
-                        color: '#FF0000',
+                        color: "#FF0000",
                     }
                 },
-                defaultCell: 0,
-                lineColor: '#DDDDDD',
-            },
+                lineColor: lineColor,
+                edge: edgeStyles.wrap,
+            }
+        }
+
+        function verifyRule(rule) {
+            if (rule == undefined) {
+                rule = rulePresets.life;
+            }
+            //
+            if (rule.name == undefined) {
+                rule.name = "Unnamed";
+            }
+            //
+            if (rule.lifeLike != undefined) {
+                var r = fromBirthSurvive(rule.name, rule.lifeLike);
+                for (var key in r) {
+                    if (r.hasOwnProperty(key)) {
+                        rule[key] = r[key];
+                    }
+                }
+            }
+            //
+            if (rule.neighborPattern == undefined) {
+                rule.neighborPattern = neighborhoodPatterns.moore;
+            } {
+                var pat = false;
+                for (var p in neighborhoodPatterns) {
+                    if (p == rule.neighborPattern) {
+                        pat = true;
+                        break;
+                    }
+                }
+                if (!pat) {
+                    rule.neighborPattern = neighborhoodPatterns.moore;
+                }
+            }
+            //
+            if (rule.neighborhoodCalculation == undefined) {
+                rule.neighborhoodCalculation = neighborhoodCalcs.sum;
+            } {
+                var cal = false;
+                for (var c in neighborhoodCalcs) {
+                    if (c == rule.neighborhoodCalculation) {
+                        cal = true;
+                        break;
+                    }
+                }
+                if (!cal) {
+                    rule.neighborhoodCalculation = neighborhoodCalcs.sum;
+                }
+            }
+            //
+            if (rule.neighborhoodSize == undefined) {
+                rule.neighborhoodSize = 1;
+            }
+            //
+            if (rule.defaultCell == undefined) {
+                rule.defaultCell = 0;
+            }
+            //
+            if (rule.edge == undefined) {
+                rule.edge = edgeStyles.defaultCell;
+            }
+            //
+            if (rule.lineColor == undefined) {
+                rule.lineColor = '#DDDDDD';
+            }
+            //
+            if (rule.state == undefined) {
+                rule.state = {};
+            }
+            //
+            for (var s in rule.state) {
+                if (rule.state[s] == undefined) {
+                    rule.state[s] = {};
+                }
+                //
+                if (rule.state[s].def == undefined) {
+                    rule.state[s].def = 0;
+                }
+                //
+                if (rule.state[s].color == undefined) {
+                    rule.state[s].color = "#FF0000";
+                }
+                //
+                if (rule.state[s].neighborValue == undefined) {
+                    rule.state[s].neighborValue = Number(s);
+                }
+            }
+
         }
 
         var currentRule = rulePresets.life;
 
 
         //Variables:
-        
+
         var editor;
+        var editorShown = false;
+        var holderUp = true;
+        var fancyTextEditorActive = false;
 
         var playing = false;
         var interval;
@@ -157,32 +374,63 @@
 
             for (var i = 0; i < gridSize.width; i++) {
                 for (var j = 0; j < gridSize.height; j++) {
-                    
+
                     var n = neighbourValue(i, j);
+
+                    var state = currentRule.state[grid[i][j]];
+
+                    if (state == undefined) {
+                        state = currentRule.state.def;
+                    }
                     
-                    if(currentRule.state[grid[i][j]] == undefined){
-                        tempGrid[i][j] = currentRule.state.def;
-                        continue;
-                    }else{
-                        if(currentRule.state[grid[i][j]].neighborEquals){
-                            if(currentRule.state[grid[i][j]].neighborEquals[n]){
-                                tempGrid[i][j] = currentRule.state[grid[i][j]].neighborEquals[n];
-                                continue;
-                            }
-                        }
-                        
-                        if(currentRule.state[grid[i][j]].neighborInRange){
-                            for(var r in currentRule.state[grid[i][j]].neighborInRange){
-                                if(n >= r.min && n <= r.max){
-                                    tempGrid[i][j] = r.val;
-                                    continue;
-                                }
+                    var c = false;
+
+                    if (state.neighborsAre) {
+                        for (var n = 0; n < state.neighborsAre.length; n++) {
+                            if (
+                                (state.neighborsAre[n].N == undefined || state.neighborsAre[n].N == getCellAsNeighborWithSafty(i, j - 1)) &&
+                                (state.neighborsAre[n].NE == undefined || state.neighborsAre[n].NE == getCellAsNeighborWithSafty(i + 1, j - 1)) &&
+                                (state.neighborsAre[n].E == undefined || state.neighborsAre[n].E == getCellAsNeighborWithSafty(i + 1, j)) &&
+                                (state.neighborsAre[n].SE == undefined || state.neighborsAre[n].SE == getCellAsNeighborWithSafty(i + 1, j + 1)) &&
+                                (state.neighborsAre[n].S == undefined || state.neighborsAre[n].S == getCellAsNeighborWithSafty(i, j + 1)) &&
+                                (state.neighborsAre[n].SW == undefined || state.neighborsAre[n].SW == getCellAsNeighborWithSafty(i - 1, j + 1)) &&
+                                (state.neighborsAre[n].W == undefined || state.neighborsAre[n].W == getCellAsNeighborWithSafty(i - 1, j)) &&
+                                (state.neighborsAre[n].NW == undefined || state.neighborsAre[n].NW == getCellAsNeighborWithSafty(i - 1, j - 1))
+                            ) {
+                                tempGrid[i][j] = state.neighborsAre[n].val;
+                                c = true;
+                                break;
                             }
                         }
                     }
                     
+                    if(c){
+                        continue;
+                    }
+
+                    if (state.neighborEquals != undefined) {
+                        if (state.neighborEquals[n] != undefined) {
+                            tempGrid[i][j] = state.neighborEquals[n];
+                            continue;
+                        }
+                    }
+
+                    if (state.neighborInRange != undefined) {
+                        for (var r in state.neighborInRange) {
+                            if (n >= r.min && n <= r.max) {
+                                tempGrid[i][j] = r.val;
+                                continue;
+                            }
+                        }
+                    }
+
+                    if (state.def != undefined) {
+                        tempGrid[i][j] = state.def;
+                        continue;
+                    }
+
                     tempGrid[i][j] = grid[i][j];
-                    
+
                     //tempGrid[i][j] = currentRule.state[grid[i][j]] != undefined ? (currentRule.state[grid[i][j]].neighborEquals[n] != undefined ? (currentRule.state[grid[i][j]].neighborEquals[n]) : currentRule.state[grid[i][j]].neighborEquals.def) : currentRule.state.def;
                 }
             }
@@ -203,27 +451,27 @@
             if (currentRule.neighborhoodCalculation == neighborhoodCalcs.sum) {
                 var n = 0;
                 neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
-                    n += getCellWithSafty(i, j);
+                    n += getCellAsNeighborWithSafty(i, j);
                 });
                 return n;
             } else if (currentRule.neighborhoodCalculation == neighborhoodCalcs.average) {
                 var n = 0;
                 var q = 0;
                 neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
-                    n += getCellWithSafty(i, j);
+                    n += getCellAsNeighborWithSafty(i, j);
                     q += 1;
                 });
                 return n / q;
             } else if (currentRule.neighborhoodCalculation == neighborhoodCalcs.min) {
                 var n = 0;
                 neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
-                    n = Math.min(n, getCellWithSafty(i, j));
+                    n = Math.min(n, getCellAsNeighborWithSafty(i, j));
                 });
                 return n;
             } else if (currentRule.neighborhoodCalculation == neighborhoodCalcs.max) {
                 var n = 0;
                 neighbors(x, y, currentRule.neighborhoodSize, function (i, j) {
-                    n = Math.max(n, getCellWithSafty(i, j));
+                    n = Math.max(n, getCellAsNeighborWithSafty(i, j));
                 });
                 return n;
             } else {
@@ -235,10 +483,10 @@
 
         function neighbors(x, y, r, func) {
             if (currentRule.neighborPattern == neighborhoodPatterns.moore) {
-                for (var i = x - r; i <= x + r; i++) {
-                    for (var j = y - r; j <= y + r; j++) {
-                        if (!(i == x && j == y)) {
-                            func(i, j);
+                for (var i = -r; i <= r; i++) {
+                    for (var j = -r; j <= r; j++) {
+                        if (!(i == 0 && j == 0)) {
+                            func(x + i, y + j);
                         }
                     }
                 }
@@ -246,7 +494,9 @@
                 for (var i = -r; i <= r; i++) {
                     var ri = r - Math.abs(i);
                     for (var j = -ri; j <= ri; j++) {
-                        func(i, j);
+                        if (!(i == 0 && j == 0)) {
+                            func(x + i, y + j);
+                        }
                     }
                 }
             } else {
@@ -254,8 +504,34 @@
             }
         }
 
+        function getCellAsNeighborWithSafty(x, y) {
+            var c = getCellWithSafty(x, y);
+            if (currentRule.state[c] != undefined) {
+                return currentRule.state[c].neighborValue;
+            }
+            return c;
+        }
+
         function getCellWithSafty(x, y) {
-            if (x >= 0 && y >= 0 && x < gridSize.width && y < gridSize.height) {
+            if (currentRule.edge == edgeStyles.defaultCell) {
+                if (x >= 0 && y >= 0 && x < gridSize.width && y < gridSize.height) {
+                    return grid[x][y];
+                } else {
+                    return currentRule.defaultCell;
+                }
+            } else if (currentRule.edge == edgeStyles.wrap) {
+                if (x < 0) {
+                    x = gridSize.width + x;
+                } else if (x >= gridSize.width) {
+                    x = x - gridSize.width;
+                }
+
+                if (y < 0) {
+                    y = gridSize.height + y;
+                } else if (y >= gridSize.height) {
+                    y = y - gridSize.height;
+                }
+
                 return grid[x][y];
             }
             return currentRule.defaultCell;
@@ -404,8 +680,8 @@
             window.addEventListener("resize", onResizeWindow, false);
 
             document.getElementById("inputFps").value = fpsCap;
-            
-            
+
+
             editor = new JSONEditor(document.getElementById("jsoneditor"), {});
 
 
@@ -416,9 +692,14 @@
             updateRuleUi();
 
             onResizeWindow();
+
+            applyDisplayForEditor();
         }
 
         function changeCurrentRule(n) {
+
+            verifyRule(rulePresets[n]);
+
             currentRule = rulePresets[n];
 
             for (var j = 0; j < gridSize.height; j++) {
@@ -429,8 +710,8 @@
 
             updateRuleUi();
         }
-            
-        function updateRuleUi(){
+
+        function updateRuleUi() {
 
             var selectPreset = document.getElementById("inputRulePreset");
             selectPreset.options.length = 0;
@@ -441,14 +722,14 @@
                 option.value = o;
                 selectPreset.add(option);
             }
-            
+
             var n = "";
-            for(var i = 0; i < Object.keys(rulePresets).length; i++){
-                if(rulePresets[Object.keys(rulePresets)[i]] == currentRule){
+            for (var i = 0; i < Object.keys(rulePresets).length; i++) {
+                if (rulePresets[Object.keys(rulePresets)[i]] == currentRule) {
                     n = Object.keys(rulePresets)[i];
                 }
             }
-            
+
             selectPreset.value = n;
 
             var selectPaint1 = document.getElementById("inputPaint1");
@@ -474,8 +755,8 @@
                 }
             }
             selectPaint2.value = secondPaint;
-            
-            
+
+
             onResizeWindow();
 
             redraw();
@@ -511,7 +792,7 @@
             }
 
             firstDraw();
-            
+
             onResizeWindow();
         }
 
@@ -546,7 +827,7 @@
                 grid[x][y] = currentPaint;
             }
             redraw();
-            if(document.activeElement){
+            if (document.activeElement) {
                 document.activeElement.blur();
             }
         }
@@ -670,64 +951,112 @@
                 secondPaint = element.options[element.selectedIndex].value;
             }
         }
-        
-        function toggleTranformationTable(){
+
+        function toggleTranformationTable() {
             var transTable = document.getElementById("transformationTable");
             transTable.style.display = transTable.style.display == "none" ? "block" : "none";
             var button = document.getElementById("buttonToggleTranformationTable");
-            button.innerHTML = transTable.style.display == "none" ? "&#8644;&#8645;" : "Hide" ;
+            button.innerHTML = transTable.style.display == "none" ? "&#8644;&#8645;" : "Hide";
         }
-        
-        function ruleToTextbox(){
+
+        function ruleToTextbox() {
             var nameT = document.getElementById("inputTextNewRuleName");
             //var codeT = document.getElementById("inputTextNewRule");
             var n = "";
-            for(var i = 0; i < Object.keys(rulePresets).length; i++){
-                if(rulePresets[Object.keys(rulePresets)[i]] == currentRule){
+            for (var i = 0; i < Object.keys(rulePresets).length; i++) {
+                if (rulePresets[Object.keys(rulePresets)[i]] == currentRule) {
                     n = Object.keys(rulePresets)[i];
                     break;
                 }
             }
             nameT.value = n;
-            editor.set(/*JSON.stringify(*/currentRule/*, null, 2)*/);
+            if (fancyTextEditorActive) {
+                editor.set(currentRule);
+            } else {
+                var text = document.getElementById("ruleTestBox");
+                text.value = JSON.stringify(currentRule, null, 2);
+            }
+
+            editorShown = true;
+
+            applyDisplayForEditor();
         }
-        
-        function textboxToRule(){
+
+        function textboxToRule() {
             var nameT = document.getElementById("inputTextNewRuleName");
             //var codeT = document.getElementById("inputTextNewRule");
-            rulePresets[nameT.value] = /*JSON.parse(*/editor.get()/*)*/;
+            if (fancyTextEditorActive) {
+                rulePresets[nameT.value] = editor.get();
+            } else {
+                var text = document.getElementById("ruleTestBox");
+                rulePresets[nameT.value] = JSON.parse(text.value);
+            }
             changeCurrentRule(nameT.value);
+
+            applyDisplayForEditor();
         }
-        
-        function popInOut(){
+
+        function popInOut() {
             var holderUpper = document.getElementById("holderTextAreaUpper");
             var holderLower = document.getElementById("holderTextAreaLower");
-            
-            var temp = holderLower.innerHTML;
-            holderLower.innerHTML = holderUpper.innerHTML;
-            holderUpper.innerHTML = temp;
+
+            holderUp = !holderUp;
+
+            var newH = holderUp ? holderUpper : holderLower;
+            var oldH = holderUp ? holderLower : holderUpper;
+
+            while (oldH.childNodes.length > 0) {
+                newH.appendChild(oldH.childNodes[0]);
+            }
+
+            applyDisplayForEditor();
+        }
+
+        function showHideEditor() {
+            editorShown = !editorShown;
+
+            applyDisplayForEditor();
+        }
+
+        function applyDisplayForEditor() {
+            var holderUpper = document.getElementById("holderTextAreaUpper");
+            var holderLower = document.getElementById("holderTextAreaLower");
+            var fancy = document.getElementById("jsoneditor");
+            var text = document.getElementById("ruleTestBox");
+
+            holderUpper.style.display = editorShown ? "block" : "none";
+            holderLower.style.display = editorShown ? "block" : "none";
+
+            fancy.style.display = fancyTextEditorActive ? "block" : "none";
+            text.style.display = fancyTextEditorActive ? "none" : "block";
             onResizeWindow();
         }
-        
-        function showHideEditor(){
-            var buttonSH = document.getElementById("buttonShowHidEditor");
-            var buttonPIO = document.getElementById("buttonPopInOut");
-            var holderUpper = document.getElementById("holderTextAreaUpper");
-            var holderLower = document.getElementById("holderTextAreaLower");
-            buttonPIO.style.display = buttonPIO.style.display == "none" ? "block" : "none";
-            holderUpper.style.display = holderUpper.style.display == "none" ? "block" : "none";
-            holderLower.style.display = holderLower.style.display == "none" ? "block" : "none";
+
+        function fancyTextEditor() {
+
+            fancyTextEditorActive = !fancyTextEditorActive;
+
+            var text = document.getElementById("ruleTestBox");
+
+            if (fancyTextEditorActive) {
+                editor.set(JSON.parse(text.value));
+            } else {
+                text.value = JSON.stringify(editor.get(), null, 2);
+            }
+
+            applyDisplayForEditor();
+
         }
-        
     </script>
 </head>
 
 <body onload="initalize();">
 
-    <div id="holderTextAreaUpper", style="position: absolute;z-index: 10;">
-        
+    <div id="holderTextAreaUpper" , style="position: absolute;z-index: 10;">
+        <div id="jsoneditor" style="display: none; width: 400px; height: 400px; background-color: rgba(255, 255, 255, 0.8)"></div>
+        <textarea id="ruleTestBox" spellcheck="false"></textarea>
     </div>
-    
+
     <canvas id="canvasMain">
         Canvas not supported, upgrade your browser dude.
     </canvas>
@@ -833,11 +1162,7 @@
         <table>
             <tr>
                 <td>
-                    <div id="holderTextAreaUpper">
-                    
-                    </div>
-                    
-                    <input type="text" id="inputTextNewRuleName"/>
+                    <input type="text" id="inputTextNewRuleName" />
                 </td>
                 <td>
                     <button onClick="ruleToTextbox();" title="Load from the current">&#8595; Edit Rule</button>
@@ -849,20 +1174,21 @@
                     <button id="buttonShowHidEditor" onClick="showHideEditor();" title="Hide/Show editor">Hide/Show editor</button>
                 </td>
                 <td>
+                    <button id="buttonToggleFancyText" onClick="fancyTextEditor();" title="Fancy/Text editor">Fancy/Text editor</button>
+                </td>
+                <td>
                     <button id="buttonPopInOut" onClick="popInOut();" title="Move editor">Move editor</button>
                 </td>
                 <td>
                     Library Sources:
-                    <a class="link" href="https://github.com/josdejong/jsoneditor">JSON Editor</a>
-                    , 
+                    <a class="link" href="https://github.com/josdejong/jsoneditor">JSON Editor</a> ,
                     <a class="link" href="http://chir.ag/projects/ntc/">NTC</a>
                 </td>
-                
+
             </tr>
         </table>
     </div>
     <div style="display: none;" id="holderTextAreaLower">
-        <div id="jsoneditor" style="width: 400px; height: 400px;"></div>
     </div>
 
 </body>
