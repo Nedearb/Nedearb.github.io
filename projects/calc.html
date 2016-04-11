@@ -1,0 +1,59 @@
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <link rel="shortcut icon" type="image/png" href="/favicon.png"/>
+    <script type="application/javascript">
+    
+      function update(){
+        
+        var o = document.getElementById("output");
+        o.innerHTML = "";
+        
+        var bases = document.getElementsByName("base");
+        var base = 16;
+        for(var i = 0; i < bases.length; i++){
+            if(bases[i].checked){
+                base = bases[i].value;
+            }
+        }
+
+        var a = parseInt(document.getElementById("alpha").value, base);
+        var b = parseInt(document.getElementById("beta").value, base);
+
+        b1 = "0";
+        b2 = "0";
+        
+        if(base == "2"){
+          b1 = "10";
+          b2 = "16";
+        } else if(base == "10"){
+          b1 = "2";
+          b2 = "16";
+        } else if(base == "16"){
+          b1 = "2";
+          b2 = "10";
+        }
+
+        o.innerHTML += a.toString(base) + "(" + base + ") = " + a.toString(b1) + "(" + b1 + ") = " + a.toString(b2) + "(" + b2 + ")<br />";
+        o.innerHTML += b.toString(base) + "(" + base + ") = " + b.toString(b1) + "(" + b1 + ") = " + b.toString(b2) + "(" + b2 + ")<br />";
+      }
+    
+    
+      
+    </script>
+  </head>
+  <body>
+    <div id="page_wrapper">
+      <div id="page_body">
+        <h2>Calc</h2>
+        <input name="base" type="radio" value="2" onchange="update();">Binary<br />
+        <input name="base" type="radio" value="10" onchange="update();">Decimal<br />
+        <input name="base" type="radio" value="16" checked="checked" onchange="update();" >Hexadecimal<br />
+        <input type="text" id="alpha" onchange="update();">
+        <input type="text" id="beta" onchange="update();">
+        <p id="output"></p>
+      </div>
+    </div>
+    <script type="text/javascript" src="/globaImpots.js"></script>
+  </body>
+</html>
