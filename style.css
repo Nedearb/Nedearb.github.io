@@ -100,11 +100,11 @@ div.leftlink:hover{
 }
 
 table td.skrink{
-    white-space:nowrap
+    white-space:nowrap;
 }
 
 table td.expand {
-    width: 99%
+    width: 99%;
 }
 
 div.tab{
@@ -124,6 +124,12 @@ div.tab:hover{
   transform:translateY(5px);
 }
 
+pre.tiny{
+  display:inline-block;
+  font-size: 8px;
+  padding: 0px;
+}
+
 img.icon{
   vertical-align: middle;
   padding-right: 10px;
@@ -138,7 +144,7 @@ img.icon{
 #page_header{
   width: 100%;
   background-color: #30353f;
-  padding-left: 20px;
+  padding-left: 10px;
   padding-right: 20px;
 }
 
