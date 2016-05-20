@@ -46,6 +46,24 @@ a{
   color:white;
 }
 
+div.inlineLinkDown{
+  color:white;
+  font-weight: bold;
+  display:inline-block;
+
+  -webkit-transition: all .3s ease;
+  -moz-transition: all .3s ease;
+  -ms-transition: all .3s ease;
+  transition: all .3s ease;
+}
+
+div.inlineLinkDown:hover{
+  -webkit-transform:translateY(5px);
+  -moz-transform:translateY(5px);
+  -ms-transform:translateY(5px);
+  transform:translateY(5px);
+}
+
 div.inlineLink{
   color:white;
   font-weight: bold;
