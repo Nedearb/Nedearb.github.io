@@ -142,7 +142,7 @@ div.tab:hover{
   transform:translateY(5px);
 }
 
-pre.tiny{
+pre.smallInline{
   display:inline-block;
   font-size: 8px;
   padding: 0px;
