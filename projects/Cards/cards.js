@@ -1,11 +1,19 @@
 var canvas;
 var context;
 var deckImage;
+var diceImage;
+var coinImage;
             
-var table = {cards:[]}
+var table = {pieces:[]}
 var cursor = {x:0, y:0};
 //var cursorOffset = {x:0, y:0};
-var selection = {x1:0, y1:0, x2:0, y2:0, cards:[]};
+var selection = {x1:0, y1:0, x2:0, y2:0, pieces:[]};
+
+var pieceCard = 0;
+var pieceDie = 1;
+
+var backBlue = 0;
+var backRed = 1;
 
 var valAce = 0;
 var valTwo = 1;
@@ -43,6 +51,10 @@ var cardWidth = 28;
 var cardHeight = 38;
 var cardHalfWidth = cardWidth/2;
 var cardHalfHeight = cardHeight/2;
+var dieSize = 14;
+var dieHalfSize = 7;
+var coinSize = 11;
+var coinHalfSize = 5;
 
 //var tick = 0;
 
@@ -67,15 +79,19 @@ function createGuid(){
     });
 }
 
-function makeCardLocal(val, suit, side, rot, x, y){
-    return {val:val, suit:suit, side:side, rot:rot, x:x, y:y, uid:createGuid()};
+function makeCardLocal(back, val, suit, side, rot, x, y){
+    return {piece:pieceCard, back:back, val:val, suit:suit, side:side, rot:rot, x:x, y:y, uid:createGuid()};
 }
 
-function makeDeckLocal(side, rot, x, y){
+function makeDieLocal(maxSides, side, x, y){
+  return {piece:pieceDie, maxSides:maxSides, side:side, x:x, y:y, uid:createGuid()};
+}
+
+function makeDeckLocal(back, side, rot, x, y){
     var deck = [];
     for(var i=0;i<suitCount;i++){
         for(var j=0;j<valCount;j++){
-            deck.push(makeCardLocal(values[j], suits[i], side, rot, x+(i*j/10), y+(i*j/10)));
+            deck.push(makeCardLocal(back, values[j], suits[i], side, rot, x+(i*j/10), y+(i*j/10)));
         }
     }
     return deck;
@@ -84,30 +100,45 @@ function redraw(){
     context.lineWidth = 1;
     context.fillStyle = "#0A6C03";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    for(var i=0;i<table.cards.length;i++){
-        var card = table.cards[i];
+    for(var i=0;i<table.pieces.length;i++){
+        var piece = table.pieces[i];
         context.save();
-        context.translate(card.x+.5, card.y+.5);
-        if(card.rot == rotLandscape){
-            context.rotate(Math.PI/2);
-        }
-        if(card.side == sideFaceUp){
-            context.drawImage(deckImage, card.val*cardWidth, card.suit*cardHeight, 28, 38, -cardHalfWidth, -cardHalfHeight, cardWidth, cardHeight);
-        }else{
-            context.drawImage(deckImage, 0, 4*cardHeight, 28, 38, -cardHalfWidth, -cardHalfHeight, cardWidth, cardHeight);
+        context.translate(piece.x+.5, piece.y+.5);
+        if(piece.piece == pieceCard){
+            if(piece.rot == rotLandscape){
+                context.rotate(Math.PI/2);
+            }
+            if(piece.side == sideFaceUp){
+                context.drawImage(deckImage, piece.val*cardWidth, piece.suit*cardHeight, cardWidth, cardHeight, -cardHalfWidth, -cardHalfHeight, cardWidth, cardHeight);
+            }else{
+                context.drawImage(deckImage, piece.back*cardWidth, 4*cardHeight, cardWidth, cardHeight, -cardHalfWidth, -cardHalfHeight, cardWidth, cardHeight);
+            }
+        }else if(piece.piece == pieceDie){
+            if(piece.maxSides == 6){
+                context.drawImage(diceImage, piece.side*dieSize, 0, dieSize, dieSize, -dieHalfSize, -dieHalfSize, dieSize, dieSize);
+            }else if(piece.maxSides == 2){
+                context.drawImage(coinImage, piece.side*coinSize, 0, coinSize, coinSize, -coinHalfSize, -coinHalfSize, coinSize, coinSize);
+            }
         }
         context.restore();
     }
     
-    for(var i=0;i<selection.cards.length;i++){
-        var card = selection.cards[i];
+    for(var i=0;i<selection.pieces.length;i++){
+        var piece = selection.pieces[i];
         context.strokeStyle = "#FF0000";
-        if(card.rot == rotLandscape){
-            context.strokeRect(card.x-cardHalfHeight+2, card.y-cardHalfWidth+2, cardHalfHeight*2-3, cardHalfWidth*2-3);
-        }else{
-            context.strokeRect(card.x-cardHalfWidth+2, card.y-cardHalfHeight+2, cardHalfWidth*2-3, cardHalfHeight*2-3);
+        if(piece.piece == pieceCard){
+            if(piece.rot == rotLandscape){
+                context.strokeRect(piece.x-cardHalfHeight+2, piece.y-cardHalfWidth+2, cardHalfHeight*2-3, cardHalfWidth*2-3);
+            }else{
+                context.strokeRect(piece.x-cardHalfWidth+2, piece.y-cardHalfHeight+2, cardWidth-3, cardHeight-3);
+            }
+        }else if(piece.piece == pieceDie){
+            if(piece.maxSides == 6){
+                context.strokeRect(piece.x-dieHalfSize+2, piece.y-dieHalfSize+2, dieSize-3, dieSize-3);
+            }else if(piece.maxSides == 2){
+                context.strokeRect(piece.x-coinHalfSize+2, piece.y-coinHalfSize+2, coinSize-3, coinSize-3);
+            }
         }
-        
     }
     
     context.strokeStyle = "#FFFF00";
@@ -115,16 +146,22 @@ function redraw(){
     context.drawImage(deckImage, 2*cardWidth, 4*cardHeight, 6, 6, cursor.x-3, cursor.y-3, 6, 6);
 }
 
-function getCardAtPosition(pos, list){
+function getPieceAtPosition(pos, list){
     for(var i=list.length-1;i>=0;i--){
-        var card = list[i];
-        if(card.rot == rotLandscape){
-            if(card.x-cardHalfHeight < pos.x && card.x+cardHalfHeight > pos.x && card.y-cardHalfWidth < pos.y && card.y+cardHalfWidth > cursor.y){
-                return card;
+        var piece = list[i];
+        if(piece.piece == pieceCard){
+            if(piece.rot == rotLandscape){
+                if(piece.x-cardHalfHeight < pos.x && piece.x+cardHalfHeight > pos.x && piece.y-cardHalfWidth < pos.y && piece.y+cardHalfWidth > cursor.y){
+                    return piece;
+                }
+            }else{
+                if(piece.x-cardHalfWidth < pos.x && piece.x+cardHalfWidth > pos.x && piece.y-cardHalfHeight < pos.y && piece.y+cardHalfHeight > cursor.y){
+                    return piece;
+                }
             }
-        }else{
-            if(card.x-cardHalfWidth < pos.x && card.x+cardHalfWidth > pos.x && card.y-cardHalfHeight < pos.y && card.y+cardHalfHeight > cursor.y){
-                return card;
+        }else if(piece.piece == pieceDie){
+            if(piece.x-dieHalfSize < pos.x && piece.x+dieHalfSize > pos.x && piece.y-dieHalfSize < pos.y && piece.y+dieHalfSize > cursor.y){
+                return piece;
             }
         }
     }
@@ -138,129 +175,135 @@ function AABB(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2){
             ay2 > by1;
 }
 
-function getCardsInArea(x1, y1, x2, y2, list){
-    var cards = [];
+function getPiecesInArea(x1, y1, x2, y2, list){
+    var pieces = [];
     for(var i=list.length-1;i>=0;i--){
-        var card = list[i];
-        if(card.rot == rotLandscape){
-            if(AABB(x1, y1, x2, y2, card.x-cardHalfHeight, card.y-cardHalfWidth, card.x+cardHalfHeight, card.y+cardHalfWidth)){
-                cards.push(card);
+        var piece = list[i];
+        if(piece.piece == pieceCard){
+            if(piece.rot == rotLandscape){
+                if(AABB(x1, y1, x2, y2, piece.x-cardHalfHeight, piece.y-cardHalfWidth, piece.x+cardHalfHeight, piece.y+cardHalfWidth)){
+                    pieces.push(piece);
+                }
+            }else{
+                if(AABB(x1, y1, x2, y2, piece.x-cardHalfWidth, piece.y-cardHalfHeight, piece.x+cardHalfWidth, piece.y+cardHalfHeight)){
+                    pieces.push(piece);
+                }
             }
-        }else{
-            if(AABB(x1, y1, x2, y2, card.x-cardHalfWidth, card.y-cardHalfHeight, card.x+cardHalfWidth, card.y+cardHalfHeight)){
-                cards.push(card);
-            }
+        }else if(piece.piece == pieceDie){
+            if(AABB(x1, y1, x2, y2, piece.x-dieHalfSize, piece.y-dieHalfSize, piece.x+dieHalfSize, piece.y+dieHalfSize)){
+                    pieces.push(piece);
+                }
         }
     }
-    return cards;
+    return pieces;
 }
 
-function removeCardNet(card){
-    sendMessage({msg:"removeCard", data:card.uid});
+function removePieceNet(piece){
+    sendMessage({msg:"removePiece", data:piece.uid});
 }
 
-function removeCardsNet(cards){
-    console.log(cards);
-    if(cards.length == 0){
+function removePiecesNet(pieces){
+    console.log(pieces);
+    if(pieces.length == 0){
         return;
     }
     var uids = [];
-    for(var i=0;i<cards.length;i++){
-        uids.push(cards[i].uid);
+    for(var i=0;i<pieces.length;i++){
+        uids.push(pieces[i].uid);
     }
-    sendMessage({msg:"removeCards", data:uids});
+    sendMessage({msg:"removePieces", data:uids});
 }
 
-function addCardNet(card){
-    sendMessage({msg:"addCard", data:card});
+function addPieceNet(piece){
+    sendMessage({msg:"addPiece", data:piece});
 }
 
-function moveCardToTopNet(card){
-    sendMessage({msg:"moveCardToTop", data:card.uid});
+function movePieceToTopNet(piece){
+    sendMessage({msg:"movePieceToTop", data:piece.uid});
 }
 
-function moveCardsToTopNet(cards){
-    if(cards.length == 0){
+function movePiecesToTopNet(pieces){
+    if(pieces.length == 0){
         return;
     }
     var uids = [];
-    for(var i=0;i<cards.length;i++){
-        uids.push(cards[i].uid);
+    for(var i=0;i<pieces.length;i++){
+        uids.push(pieces[i].uid);
     }
-    sendMessage({msg:"moveCardsToTop", data:uids});
+    sendMessage({msg:"movePiecesToTop", data:uids});
 }
 
-function changeCardNet(card){
-    sendMessage({msg:"changeCard", data:card});
+function changePieceNet(piece){
+    sendMessage({msg:"changePiece", data:piece});
 }
 
-function changeCardsNet(cards){
-    if(cards.length == 0){
+function changePiecesNet(pieces){
+    if(pieces.length == 0){
         return;
     }
-    sendMessage({msg:"changeCards", data:cards});
+    sendMessage({msg:"changePiece", data:pieces});
 }
 
-function moveCardNet(card){
-    sendMessage({msg:"moveCard", data:{uid:card.uid, x:card.x, y:card.y}});
+function movePieceNet(piece){
+    sendMessage({msg:"movePiece", data:{uid:piece.uid, x:piece.x, y:piece.y}});
 }
 
-function moveCardsNet(cards){
-    if(cards.length == 0){
+function movePiecesNet(pieces){
+    if(pieces.length == 0){
         return;
     }
     var uidsPos = [];
-    for(var i=0;i<cards.length;i++){
-        uidsPos.push({uid:cards[i].uid, x:cards[i].x, y:cards[i].y});
+    for(var i=0;i<pieces.length;i++){
+        uidsPos.push({uid:pieces[i].uid, x:pieces[i].x, y:pieces[i].y});
     }
-    sendMessage({msg:"moveCards", data:uidsPos});
+    sendMessage({msg:"movePieces", data:uidsPos});
 }
 
-function moveCardLocal(uid, x, y){
-    for(var i=0;i<table.cards.length;i++){
-        var card = table.cards[i];
-        if(card.uid == uid){
-            card.x = x;
-            card.y = y;
-            return card;
+function movePieceLocal(uid, x, y){
+    for(var i=0;i<table.pieces.length;i++){
+        var piece = table.pieces[i];
+        if(piece.uid == uid){
+            piece.x = x;
+            piece.y = y;
+            return piece;
         }
     }
 }
 
-function removeCardLocal(uid){
-    for(var i=0;i<table.cards.length;i++){
-        if(table.cards[i].uid == uid){
-            table.cards.splice(i, 1);
-            return table.cards[i];
+function removePieceLocal(uid){
+    for(var i=0;i<table.pieces.length;i++){
+        if(table.pieces[i].uid == uid){
+            table.pieces.splice(i, 1);
+            return table.pieces[i];
         }
     }
     return null;
 }
 
-function moveCardToTopLocal(uid){
-    for(var i=0;i<table.cards.length;i++){
-        var card = table.cards[i];
-        if(card.uid == uid){
-            table.cards.splice(i, 1);
-            table.cards.push(card);
+function movePieceToTopLocal(uid){
+    for(var i=0;i<table.pieces.length;i++){
+        var piece = table.pieces[i];
+        if(piece.uid == uid){
+            table.pieces.splice(i, 1);
+            table.pieces.push(piece);
             return;
         }
     }
 }
 
-function changeCardLocal(changedCard){
-    for(var i=0;i<table.cards.length;i++){
-        if(table.cards[i].uid == changedCard.uid){
-            table.cards[i].val = changedCard.val;
-            table.cards[i].suit = changedCard.suit;
-            table.cards[i].side = changedCard.side;
-            table.cards[i].rot = changedCard.rot;
-            table.cards[i].x = changedCard.x;
-            table.cards[i].y = changedCard.y;
+function changePieceLocal(changedPiece){
+    for(var i=0;i<table.pieces.length;i++){
+        if(table.pieces[i].uid == changedPiece.uid){
+            table.pieces[i].val = changedPiece.val;
+            table.pieces[i].suit = changedPiece.suit;
+            table.pieces[i].side = changedPiece.side;
+            table.pieces[i].rot = changedPiece.rot;
+            table.pieces[i].x = changedPiece.x;
+            table.pieces[i].y = changedPiece.y;
             return;
         }
     }
-    table.cards.push(changedCard);
+    table.pieces.push(changedPiece);
 }
 
 function sendMessage(data){
@@ -273,62 +316,67 @@ function sendMessage(data){
 
 function reciveMessage(data){
     console.log("Recived:", data);
-    if(data.msg == "clearCards"){
-        table.cards = [];
-        selection.cards = [];
+    if(data.msg == "clearPieces"){
+        table.pieces = [];
+        selection.pieces = [];
     }else if(data.msg == "newDeck"){
-        table.cards = table.cards.concat(data.data);
-    }else if(data.msg == "removeCard"){
-        removeCardLocal(data.data);
-    }else if(data.msg == "removeCards"){
+        table.pieces = table.pieces.concat(data.data);
+    }else if(data.msg == "removePiece"){
+        removePieceLocal(data.data);
+    }else if(data.msg == "removePieces"){
         for(var i=0;i<data.data.length;i++){
-            removeCardLocal(data.data[i]);
+            removePieceLocal(data.data[i]);
         }
-    }else if(data.msg == "addCard"){
-        table.cards.push(data.data);
-    }else if(data.msg == "changeCard"){
-        changeCardLocal(data.data);
-    }else if(data.msg == "changeCards"){
+    }else if(data.msg == "addPiece"){
+        table.pieces.push(data.data);
+    }else if(data.msg == "changePiece"){
+        changePieceLocal(data.data);
+    }else if(data.msg == "changePieces"){
         for(var i=0;i<data.data.length;i++){
-            changeCardLocal(data.data[i]);
+            changePieceLocal(data.data[i]);
         }
-    }else if(data.msg == "moveCard"){
-        changeCardLocal(data.data);
-    }else if(data.msg == "moveCards"){
+    }else if(data.msg == "movePiece"){
+        changePieceLocal(data.data);
+    }else if(data.msg == "movePieces"){
         for(var i=0;i<data.data.length;i++){
-            changeCardLocal(data.data[i]);
+            changePieceLocal(data.data[i]);
         }
-    }else if(data.msg == "moveCardToTop"){
-        moveCardToTopLocal(data.data);
-    }else if(data.msg == "moveCardsToTop"){
+    }else if(data.msg == "movePieceToTop"){
+        movePieceToTopLocal(data.data);
+    }else if(data.msg == "movePiecesToTop"){
         for(var i=data.data.length-1;i>=0;i--){
-            moveCardToTopLocal(data.data[i]);
+            movePieceToTopLocal(data.data[i]);
         }
-    }else if(data.msg == "requestCards"){
-        changeCardsNet(table.cards);
+    }else if(data.msg == "requestPieces"){
+        changePiecesNet(table.pieces);
     }
     redraw();
 }
 
 function buttonNewDeck(){
-    var deck = makeDeckLocal(sideFaceDown, rotPortrait, cursor.x, cursor.y);
+    var selectBack = document.getElementById("makeCardBack").value;
+    var deck = makeDeckLocal(selectBack, sideFaceDown, rotPortrait, cursor.x, cursor.y);
     shuffle(deck);
     sendMessage({msg:"newDeck", data:deck});
 }
 
-function buttonClearCards(){
-    sendMessage({msg:"clearCards"});
+function buttonClearPieces(){
+    sendMessage({msg:"clearPieces"});
 }
 
 function buttonMakeCard(){
+    var selectBack = document.getElementById("makeCardBack").value;
     var selectVal = document.getElementById("makeCardVal").value;
     var selectSuit = document.getElementById("makeCardSuit").value;
     var selectSide = document.getElementById("makeCardSide").value;
     var selectRot = document.getElementById("makeCardRot").value;
-    sendMessage({msg:"changeCard", data:makeCardLocal(selectVal, selectSuit, selectSide, selectRot, cursor.x, cursor.y)})
+    sendMessage({msg:"changePiece", data:makeCardLocal(selectBack, selectVal, selectSuit, selectSide, selectRot, cursor.x, cursor.y)})
 }
 
-
+function buttonMakeDie(maxSides){
+    var side = Math.floor(Math.random() * maxSides);
+    sendMessage({msg:"changePiece", data:makeDieLocal(maxSides, side, cursor.x, cursor.y)});
+}
 
 var PUBNUB_cards = PUBNUB.init({
     publish_key: 'pub-c-114809be-70d6-45ef-a004-54cd12c6905b',
@@ -344,52 +392,56 @@ function setCursor(e){
 
 
 function flipSelection(){
-    if(selection.cards.length == 0){
-        var card = getCardAtPosition(cursor, table.cards);
-        if(card){
-            selection.cards.push(card);
+    if(selection.pieces.length == 0){
+        var piece = getPieceAtPosition(cursor, table.pieces);
+        if(piece){
+            selection.pieces.push(piece);
         }
     }
-    for(var i=0;i<selection.cards.length;i++){
-        if(selection.cards[i].side == sideFaceDown){
-            selection.cards[i].side = sideFaceUp;
-        }else{
-            selection.cards[i].side = sideFaceDown;
+    for(var i=0;i<selection.pieces.length;i++){
+        if(selection.pieces[i].piece == pieceCard){
+            if(selection.pieces[i].side == sideFaceDown){
+                selection.pieces[i].side = sideFaceUp;
+            }else{
+                selection.pieces[i].side = sideFaceDown;
+            }
+        }else if(selection.pieces[i].piece == pieceDie){
+            selection.pieces[i].side = Math.floor(Math.random() * selection.pieces[i].maxSides);
         }
     }
-    changeCardsNet(selection.cards);
+    changePiecesNet(selection.pieces);
     //moveCardsToTopNet(selection.cards);
-    selection.cards = [];
+    selection.pieces = [];
 }
 
 function rotSelection(){
-    if(selection.cards.length == 0){
-        var card = getCardAtPosition(cursor, table.cards);
-        if(card){
-            selection.cards.push(card);
+    if(selection.pieces.length == 0){
+        var piece = getPieceAtPosition(cursor, table.pieces);
+        if(piece){
+            selection.pieces.push(piece);
         }
     }
-    for(var i=0;i<selection.cards.length;i++){
-        if(selection.cards[i].rot == rotPortrait){
-            selection.cards[i].rot = rotLandscape;
+    for(var i=0;i<selection.pieces.length;i++){
+        if(selection.pieces[i].rot == rotPortrait){
+            selection.pieces[i].rot = rotLandscape;
         }else{
-            selection.cards[i].rot = rotPortrait;
+            selection.pieces[i].rot = rotPortrait;
         }
     }
-    changeCardsNet(selection.cards);
+    changePiecesNet(selection.pieces);
     //moveCardsToTopNet(selection.cards);
-    selection.cards = [];
+    selection.pieces = [];
 }
 
 function deleteSelection(){
-    if(selection.cards.length == 0){
-        var card = getCardAtPosition(cursor, table.cards);
-        if(card){
-            selection.cards.push(card);
+    if(selection.pieces.length == 0){
+        var piece = getPieceAtPosition(cursor, table.pieces);
+        if(piece){
+            selection.pieces.push(card);
         }
     }
-    removeCardsNet(selection.cards);
-    selection.cards = [];
+    removePiecesNet(selection.pieces);
+    selection.pieces = [];
 }
 
 
@@ -402,6 +454,8 @@ window.onload = function(){
     context.translate(.5, .5);
     
     deckImage = document.getElementById("deckImage");
+    diceImage = document.getElementById("diceImage");
+    coinImage = document.getElementById("coinImage");
     
     redraw();
     
@@ -413,9 +467,9 @@ window.onload = function(){
     canvas.onmousedown = function(e){
         setCursor(e);
         if(!e.shiftKey){
-            if(selection.cards.length > 0){
-                if(!getCardAtPosition(cursor, selection.cards)){
-                    selection.cards = [];
+            if(selection.pieces.length > 0){
+                if(!getPieceAtPosition(cursor, selection.pieces)){
+                    selection.pieces = [];
                 }
             }
         }
@@ -425,19 +479,19 @@ window.onload = function(){
                 selection.x2 = cursor.x;
                 selection.y1 = cursor.y;
                 selection.y2 = cursor.y;
-                selection.cards = [];
+                selection.pieces = [];
             }else{
-                if(selection.cards.length == 0){
-                    var card = getCardAtPosition(cursor, table.cards);
-                    if(card){
-                        selection.cards.push(card);
+                if(selection.pieces.length == 0){
+                    var piece = getPieceAtPosition(cursor, table.pieces);
+                    if(piece){
+                        selection.pieces.push(piece);
                     }
                 }
-                for(var i=0;i<selection.cards.length;i++){
-                    selection.cards[i].cursorOffsetX = selection.cards[i].x - cursor.x;
-                    selection.cards[i].cursorOffsetY = selection.cards[i].y - cursor.y;
+                for(var i=0;i<selection.pieces.length;i++){
+                    selection.pieces[i].cursorOffsetX = selection.pieces[i].x - cursor.x;
+                    selection.pieces[i].cursorOffsetY = selection.pieces[i].y - cursor.y;
                 }
-                moveCardsToTopNet(selection.cards);
+                movePiecesToTopNet(selection.pieces);
             }
         }else if(e.which == 2){
             rotSelection();
@@ -473,13 +527,13 @@ window.onload = function(){
                 selection.x2 = cursor.x;
                 selection.y2 = cursor.y;
             }else{
-                for(var i=0;i<selection.cards.length;i++){
+                for(var i=0;i<selection.pieces.length;i++){
                     selection.x1 = cursor.x;
                     selection.x2 = cursor.x;
                     selection.y1 = cursor.y;
                     selection.y2 = cursor.y;
-                    selection.cards[i].x = Math.round(cursor.x + selection.cards[i].cursorOffsetX);
-                    selection.cards[i].y = Math.round(cursor.y + selection.cards[i].cursorOffsetY);
+                    selection.pieces[i].x = Math.round(cursor.x + selection.pieces[i].cursorOffsetX);
+                    selection.pieces[i].y = Math.round(cursor.y + selection.pieces[i].cursorOffsetY);
                 }
                 //if(tick % 10 == 0){
                     //moveCardsNet(selection.cards);
@@ -514,13 +568,13 @@ window.onload = function(){
             selection.y2 = temp;
         }
         if(e.shiftKey){
-            selection.cards = getCardsInArea(selection.x1, selection.y1, selection.x2, selection.y2, table.cards);
+            selection.pieces = getPiecesInArea(selection.x1, selection.y1, selection.x2, selection.y2, table.pieces);
         }
         selection.x1 = cursor.x;
         selection.x2 = cursor.x;
         selection.y1 = cursor.y;
         selection.y2 = cursor.y;
-        changeCardsNet(selection.cards);
+        changePiecesNet(selection.pieces);
         
         redraw();
     }
@@ -574,7 +628,7 @@ function loadTable(e){
                 
                 var loadedTable = JSON.parse(contents);
                 
-                table.cards = table.cards.concat(loadedTable.cards);
+                table.pieces = table.pieces.concat(loadedTable.pieces);
                 
                 console.log("Loaded Table");
                 
@@ -593,7 +647,7 @@ function subscribeToPUBNUBChannel(channel){
         channel: PUBNUB_channel,
         message: reciveMessage,
         connect: function(){
-            sendMessage({msg:"requestCards"});
+            sendMessage({msg:"requestPieces"});
         }
     });
 }

@@ -11,12 +11,16 @@
     </head>
     <body>
         <img id="deckImage" src="deck.png" style="display: none;">
+        <img id="diceImage" src="dice.png" style="display: none;">
+        <img id="coinImage" src="coin.png" style="display: none;">
         <table>
             <tr>
                 <td>
                     Channel:<input type="text" id="inputChannel">
                     <button type="button" onclick="buttonNewDeck()">New Shuffled Deck</button>
-                    <button type="button" onclick="buttonClearCards()">Clear Cards</button>
+                    <button type="button" onclick="buttonMakeDie(6)">Make Die</button>
+                    <button type="button" onclick="buttonMakeDie(2)">Make Coin</button>
+                    <button type="button" onclick="buttonClearPieces()">Clear Pieces</button>
                 </td>
             </tr>
             <tr>
@@ -25,6 +29,11 @@
                 </td>
                 <td>
                     Place Card
+                    <br />
+                    <select id="makeCardBack">
+                        <option value="0">Blue</option>
+                        <option value="1">Red</option>
+                    </select>
                     <br />
                     <select id="makeCardVal">
                         <option value="0">Ace</option>
