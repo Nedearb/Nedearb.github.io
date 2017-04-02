@@ -241,7 +241,7 @@ function changePiecesNet(pieces){
     if(pieces.length == 0){
         return;
     }
-    sendMessage({msg:"changePiece", data:pieces});
+    sendMessage({msg:"changePieces", data:pieces});
 }
 
 function movePieceNet(piece){
@@ -292,14 +292,26 @@ function movePieceToTopLocal(uid){
 }
 
 function changePieceLocal(changedPiece){
+    if(changedPiece.uid == undefined){
+       console.log("Trying to change a piece without a UID: ", changedPiece);
+    }
     for(var i=0;i<table.pieces.length;i++){
         if(table.pieces[i].uid == changedPiece.uid){
-            table.pieces[i].val = changedPiece.val;
-            table.pieces[i].suit = changedPiece.suit;
+            
+            table.pieces[i].piece = changedPiece.piece;
             table.pieces[i].side = changedPiece.side;
-            table.pieces[i].rot = changedPiece.rot;
             table.pieces[i].x = changedPiece.x;
             table.pieces[i].y = changedPiece.y;
+            
+            if(changedPiece.piece == pieceCard){
+                table.pieces[i].back = changedPiece.back;
+                table.pieces[i].val = changedPiece.val;
+                table.pieces[i].suit = changedPiece.suit;
+                table.pieces[i].rot = changedPiece.rot;
+            }else if(changedPiece.piece == pieceDie){
+                table.pieces[i].maxSides = changedPiece.maxSides;
+            }
+            console.log("Changed local: ", table.pieces[i])
             return;
         }
     }
