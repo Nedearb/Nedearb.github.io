@@ -265,14 +265,14 @@
         grid.graphics.endStroke().beginStroke(gridColorSub);
         for (var i = 0; i <= height; i += pixelsPerMeter/10) {
           grid.graphics.mt(0, i).lt(width, i);
-          var numL = new createjs.Text((i/pixelsPerMeter*10)+" cm", "14px Arial", gridColorMain);
+          var numL = new createjs.Text(Math.round(i/pixelsPerMeter*100)+" cm", "14px Arial", gridColorMain);
           numL.textAlign = "left";
           numL.textBaseline = "top";
           numL.x = 5;
           numL.y = height-i;
           stage.addChild(numL);
 
-          var numR = new createjs.Text((i/pixelsPerMeter*10)+" cm", "14px Arial", gridColorMain);
+          var numR = new createjs.Text(Math.round(i/pixelsPerMeter*100)+" cm", "14px Arial", gridColorMain);
           numR.textAlign = "right";
           numR.textBaseline = "top";
           numR.x = width-5;
