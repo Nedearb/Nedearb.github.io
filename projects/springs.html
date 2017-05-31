@@ -1,0 +1,342 @@
+<html>
+  <head>
+    <script src="https://code.createjs.com/easeljs-0.8.2.min.js"></script>
+    <script type="text/javascript">
+
+      var densityOfLead = 11340;
+      var densityOfSteel = 8050;
+      var densityOfABSPlastic = 1060;
+      var densityOfOak = 740;
+      var densityOfStyrofoam = 45;
+
+      var gravityAcc = 9.8;
+
+      var airDensity = 1.2;
+      var weightDragCoef = 0.82;
+
+      var pixelsPerMeter = 300;
+
+      var attachDistance = 25;
+
+      var springLoops = 20;
+
+      var stage;
+      var weights = [];
+      var springs = [];
+
+      var fps = 60;
+
+      var weightDepth = 0.2;
+      var weightHookSize = 0.3;
+
+      var gridColorMain = "#A0A0A0";
+      var gridColorSub = "#F0F0F0";
+
+      var colorSpring = "#808080";
+      var colorSpringHook = "#FF8080";
+
+      var colorWeightOutline = "#000000";
+      var colorWeightText = "#000000";
+
+      var colorWeightRed = "#FF8080";
+      var colorWeightGreen = "#80FF80";
+      var colorWeightBlue = "#80C0FF";
+      var colorWeightYellow = "#FFFF80";
+      var colorWeightMagenta = "#FF80FF";
+      var colorWeightCyan = "#80FFFF";
+      var colorWeightGray = "#808080";
+      var colorWeightLightGray = "#CCCCCC";
+      var colorWeightBrown = "#B67721"; 
+
+      var width, height;
+
+
+      function enableDragging(shape){
+        shape.on("mousedown", function(evt){
+          evt.currentTarget.offset = {x:(evt.currentTarget.x - evt.stageX), y:(evt.currentTarget.y - evt.stageY)};
+          evt.currentTarget.stage.setChildIndex(evt.currentTarget, evt.currentTarget.stage.getNumChildren()-1);
+        });
+        shape.on("pressmove", function(evt){
+          evt.currentTarget.x = evt.stageX + evt.currentTarget.offset.x;
+          evt.currentTarget.y = evt.stageY + evt.currentTarget.offset.y;
+          if(evt.currentTarget.newton){
+            evt.currentTarget.newton.position.x = evt.currentTarget.x / pixelsPerMeter;
+            evt.currentTarget.newton.position.y = evt.currentTarget.y / pixelsPerMeter;
+          }
+          evt.currentTarget.beingDragged = true;
+
+          if(evt.currentTarget.hookOffset){
+            for (var i = 0; i < springs.length; i++) {
+              var spring = springs[i];
+              if (spring.newton.attached == null) {
+                var x = shape.x;
+                var y = shape.y+shape.hookOffset;
+                var sx = spring.x;
+                var sy = spring.bottomBit.y;
+                var d = Math.sqrt((sx-x)*(sx-x)+(sy-y)*(sy-y));
+                if (d < attachDistance) {
+                  attachToSpring(shape, spring);
+                }
+              }
+            }
+          }
+
+        });
+        shape.on("pressup", function(evt){
+          evt.currentTarget.beingDragged = false;
+        });
+      }
+
+      function createWeight(mass, x, y, w, h, name, hideMass, color){
+        var weight = new createjs.Container();
+        var rect = new createjs.Shape();
+        var wp = w*pixelsPerMeter;
+        var hp = h*pixelsPerMeter;
+
+
+        //bottom:
+        rect.graphics.beginFill(color).de(-wp/2, hp/2-weightDepth*wp, wp, weightDepth*wp*2).endFill();
+        rect.graphics.beginStroke(colorWeightOutline).de(-wp/2, hp/2-weightDepth*wp, wp, weightDepth*wp*2).endStroke();
+
+        //rect:
+        rect.graphics.beginFill(color).dr(-wp/2, -hp/2, wp, hp).endFill();
+        rect.graphics.beginStroke(colorWeightOutline).mt(-wp/2, -hp/2).lt(-wp/2, hp/2).mt(wp/2, -hp/2).lt(wp/2, hp/2).endStroke();
+
+        //top:
+        rect.graphics.beginFill(color).de(-wp/2, -hp/2-weightDepth*wp, wp, weightDepth*wp*2).endFill();
+        rect.graphics.beginStroke(colorWeightOutline).de(-wp/2, -hp/2-weightDepth*wp, wp, weightDepth*wp*2).endStroke();
+
+        //hook:
+        rect.graphics.beginStroke(colorWeightOutline).mt(-wp*weightHookSize, -hp/2).lt(0, -hp/2-wp*weightHookSize).lt(wp*weightHookSize, -hp/2).endStroke();
+
+
+        var text = new createjs.Text(name+(hideMass?"":((name==""?"":"\n")+mass+"kg")), "15px Arial", colorWeightText);
+        text.textAlign = "center";
+        text.textBaseline = "middle";
+
+        weight.addChild(rect);
+        weight.addChild(text);
+
+        weight.x = x * pixelsPerMeter;
+        weight.y = y * pixelsPerMeter;
+        weight.w2 = w/2 * pixelsPerMeter;
+        weight.h2 = h/2 * pixelsPerMeter;
+
+        weight.hookOffset = -(weight.h2)-wp*weightHookSize+2;
+
+        weight.newton = {};
+
+        weight.newton.mass = mass;
+
+        weight.newton.forces = {};
+        weight.newton.velocity = {x:0, y:0};
+        weight.newton.position = {x:x, y:y};
+
+        weight.newton.forces.gravity = {enabled: true, x:0, y:(mass*gravityAcc)};
+        weight.newton.forces.spring = {enabled: false, x:0, y:0};
+        weight.newton.forces.drag = {enabled: true, x:0, y:0};
+
+        enableDragging(weight);
+        stage.addChild(weight);
+        return weight;
+      }
+
+      function createCylinderWeight(mass, density, WHRatio, x, y, name, hideMass, color){
+        // m^3 = kg / kg/m^3
+        // vol = mass / density = (pi*r*r)*h;
+        // h = (mass / density)/(pi*r*r)
+        // WHRatio = (r*2)/h
+        // vol = mass / density = pi*r*r*r*2/WHRatio;
+        var r = Math.pow(((mass/density)*WHRatio)/(Math.PI*2), 1/3.0);
+        var w = r*2;
+        var h = w/WHRatio;
+        return createWeight(mass, x, y, w, h, name, hideMass, color);
+      }
+
+      function updateWeight(weight, delta){
+
+        var v = weight.newton.velocity.y;
+        var r = weight.w2 / pixelsPerMeter;
+
+        weight.newton.forces.drag.y = (v < 0 ? 1 : -1) * 0.5 * airDensity * (v*v) * weightDragCoef * (Math.PI*r*r);
+
+        var netForce = {x:0, y:0};
+
+        for (var forceKey in weight.newton.forces) {
+          if(weight.newton.forces[forceKey].enabled){
+            netForce.x += weight.newton.forces[forceKey].x;
+            netForce.y += weight.newton.forces[forceKey].y;
+          }
+        }
+
+        weight.newton.velocity.x += (netForce.x / weight.newton.mass) * delta;
+        weight.newton.velocity.y += (netForce.y / weight.newton.mass) * delta;
+
+        weight.newton.position.x += (weight.newton.velocity.x) * delta;
+        weight.newton.position.y += (weight.newton.velocity.y) * delta;
+
+        if(weight.newton.position.y * pixelsPerMeter + weight.h2 >= height){
+          weight.newton.position.y = (height - weight.h2) / pixelsPerMeter;
+          weight.newton.velocity.y = 0;
+        }
+
+        weight.x = weight.newton.position.x * pixelsPerMeter;
+        weight.y = weight.newton.position.y * pixelsPerMeter;
+
+      }
+
+      function createSpring(springConstant, dampingCoef, x, topY, relaxedLength){
+        var spring = new createjs.Container();
+        spring.topBit = new createjs.Shape();
+        spring.bottomBit = new createjs.Shape();
+        spring.bottomBit.graphics.beginStroke(colorSpringHook).setStrokeStyle(3, "round").mt(-attachDistance, 0).lt(attachDistance, 0).endStroke();
+
+        spring.x = x * pixelsPerMeter;
+        spring.y = topY * pixelsPerMeter;
+
+        spring.bottomBit.y = relaxedLength * pixelsPerMeter;
+
+        spring.newton = {};
+        spring.newton.dampingCoef = dampingCoef;
+        spring.newton.springConstant = springConstant;
+        spring.newton.relaxedLength = relaxedLength;
+        spring.newton.attached = null;
+
+
+        spring.addChild(spring.topBit);
+        spring.addChild(spring.bottomBit);
+
+        stage.addChild(spring);
+        return spring;
+      }
+
+      function updateSpring(spring, delta){
+
+        if(spring.newton.attached){
+          spring.newton.attached.newton.forces.spring.enabled = true;
+          spring.bottomBit.y = spring.newton.attached.y+spring.newton.attached.hookOffset;
+
+          var displacement = (spring.bottomBit.y - spring.newton.relaxedLength * pixelsPerMeter);
+          spring.newton.attached.newton.forces.spring.y = -displacement * spring.newton.springConstant - spring.newton.dampingCoef*spring.newton.attached.newton.velocity.y;
+
+          if(Math.abs(spring.x - spring.newton.attached.x) > attachDistance){
+            detachFromSpring(spring);
+          }
+
+        }else{
+          spring.bottomBit.y += ((spring.newton.relaxedLength * pixelsPerMeter)-spring.bottomBit.y)/2;
+        }
+
+
+        spring.topBit.graphics.clear().beginStroke(colorSpring).setStrokeStyle(3, "round");
+        for(var i = 0; i <= springLoops; i++){
+          spring.topBit.graphics.lt(((i%2)*2-1)*10, spring.bottomBit.y/springLoops*i);
+        }
+        spring.topBit.graphics.beginStroke(colorSpring).setStrokeStyle(3, "round").mt(-10, spring.bottomBit.y).lt(10, spring.bottomBit.y);
+        spring.topBit.graphics.endStroke();
+
+      }
+
+      function attachToSpring(weight, spring){
+        spring.newton.attached = weight;
+        spring.newton.attached.newton.forces.spring.enabled = true;
+      }
+
+      function detachFromSpring(spring){
+        spring.newton.attached.newton.forces.spring.enabled = false;
+        spring.newton.attached = null;
+      }
+      
+      function init(){
+
+        stage = new createjs.Stage("mainCanvas");
+
+        width = stage.canvas.width;
+        height = stage.canvas.height-20;
+
+        var grid = new createjs.Shape();
+        grid.graphics.beginStroke(gridColorMain);
+        for (var i = 0; i <= width; i += pixelsPerMeter) {
+          grid.graphics.mt(i, 0).lt(i, height);
+        }
+        for (var i = 0; i <= height; i += pixelsPerMeter) {
+          grid.graphics.mt(0, i).lt(width, i);
+        }
+        grid.graphics.endStroke().beginStroke(gridColorSub);
+        for (var i = 0; i <= height; i += pixelsPerMeter/10) {
+          grid.graphics.mt(0, i).lt(width, i);
+          var numL = new createjs.Text((i/pixelsPerMeter*10)+" cm", "14px Arial", gridColorMain);
+          numL.textAlign = "left";
+          numL.textBaseline = "top";
+          numL.x = 5;
+          numL.y = height-i;
+          stage.addChild(numL);
+
+          var numR = new createjs.Text((i/pixelsPerMeter*10)+" cm", "14px Arial", gridColorMain);
+          numR.textAlign = "right";
+          numR.textBaseline = "top";
+          numR.x = width-5;
+          numR.y = i;
+          stage.addChild(numR);
+        }
+        stage.addChild(grid);
+
+        setupWeightsAndSprings();
+
+        createjs.Ticker.setFPS(fps);
+        createjs.Ticker.addEventListener("tick", tick);
+      }
+
+      var time = 0;
+
+      function tick(event){
+
+        var delta = 1/fps;
+
+        for (var i = 0; i < weights.length; i++) {
+          if(!weights[i].beingDragged){
+            updateWeight(weights[i], delta);
+          }
+        }
+
+        for (var i = 0; i < springs.length; i++) {
+          updateSpring(springs[i], delta);
+        }
+
+        stage.update();
+      }
+
+
+
+      function setupWeightsAndSprings(){
+        var x = 0.5;
+
+        //           createSpring(springConst, dampingCoef, x, y, relaxedLength)f
+        for (var i = 0; i <= 8; i++) {
+          springs.push(createSpring(1, 10, x+=0.2, 0, 0.4));
+        }
+
+        x = 0.5;
+
+        //           createCylinderWeight(mass, density, WHRatio, x, y)
+        weights.push(createCylinderWeight(1, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightBlue));
+        weights.push(createCylinderWeight(2, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightRed));
+        weights.push(createCylinderWeight(5, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightMagenta));
+        weights.push(createCylinderWeight(10, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightYellow));
+        weights.push(createCylinderWeight(15, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(20, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(25, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(30, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(13, densityOfABSPlastic, 0.7, x+=0.2, 1, "?", true, colorWeightGreen));
+
+        attachToSpring(weights[0], springs[0]);
+      }
+
+    </script>
+  </head>
+  <body>
+    <body onload="init();">
+      <canvas id="mainCanvas" width="900" height="620"></canvas>
+    </body>
+  </body>
+</html>
