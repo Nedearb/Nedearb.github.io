@@ -11,7 +11,7 @@
 
       var gravityAcc = 9.8;
 
-      var pixelsPerMeter = 300;
+      var pixelsPerMeter = 600;
 
       var attachDistance = 25;
 
@@ -106,8 +106,19 @@
         //hook:
         rect.graphics.beginStroke(colorWeightOutline).mt(-wp*weightHookSize, -hp/2).lt(0, -hp/2-wp*weightHookSize).lt(wp*weightHookSize, -hp/2).endStroke();
 
+        var str = name;
+        if(name!=""){
+          str+="\n";
+        }
+        if(!hideMass){
+          if(mass < 1){
+            str += (mass*1000) + "g";
+          }else{
+            str += mass + "kg";
+          }
+        }
 
-        var text = new createjs.Text(name+(hideMass?"":((name==""?"":"\n")+mass+"kg")), "15px Arial", colorWeightText);
+        var text = new createjs.Text(str, "15px Arial", colorWeightText);
         text.textAlign = "center";
         text.textBaseline = "middle";
 
@@ -249,10 +260,6 @@
         height = stage.canvas.height-20;
 
         var grid = new createjs.Shape();
-        grid.graphics.beginStroke(gridColorMain);
-        for (var i = 0; i <= width; i += pixelsPerMeter) {
-          grid.graphics.mt(i, 0).lt(i, height);
-        }
         for (var i = 0; i <= height; i += pixelsPerMeter) {
           grid.graphics.mt(0, i).lt(width, i);
         }
@@ -263,14 +270,14 @@
           numL.textAlign = "left";
           numL.textBaseline = "top";
           numL.x = 5;
-          numL.y = height-i;
+          numL.y = i;
           stage.addChild(numL);
 
           var numR = new createjs.Text(Math.round(i/pixelsPerMeter*100)+" cm", "14px Arial", gridColorMain);
           numR.textAlign = "right";
           numR.textBaseline = "top";
           numR.x = width-5;
-          numR.y = i;
+          numR.y = height-i;
           stage.addChild(numR);
         }
         stage.addChild(grid);
@@ -303,25 +310,21 @@
 
 
       function setupWeightsAndSprings(){
-        var x = 0.5;
 
-        for (var i = 0; i <= 8; i++) {
-          //           createSpring(springConst, dampingCoef, x, y, relaxedLength)
-          springs.push(createSpring(1000, 20, x+=0.2, 0, 0.4));
-        }
+        //           createSpring(springConst, dampingCoef, x, y, relaxedLength)
+        springs.push(createSpring(100, 2, .5, 0, 0.3));
 
-        x = 0.5;
-
-        //           createCylinderWeight(mass, density, WHRatio, x, y, text, showMass, color)
-        weights.push(createCylinderWeight(1, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightBlue));
-        weights.push(createCylinderWeight(2, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightRed));
-        weights.push(createCylinderWeight(5, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightMagenta));
-        weights.push(createCylinderWeight(10, densityOfABSPlastic, 0.7, x+=0.2, 1, "", false, colorWeightYellow));
-        weights.push(createCylinderWeight(15, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
-        weights.push(createCylinderWeight(20, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
-        weights.push(createCylinderWeight(25, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
-        weights.push(createCylinderWeight(30, densityOfSteel, 0.7, x+=0.2, 1, "", false, colorWeightLightGray));
-        weights.push(createCylinderWeight(13, densityOfABSPlastic, 0.7, x+=0.2, 1, "?", true, colorWeightGreen));
+        var x = 0.1;
+        //           createCylinderWeight(mass, density, WHRatio, x, y, text, hideMass, color)
+        weights.push(createCylinderWeight(0.1, densityOfABSPlastic, 0.7, x+=0.1, 1, "", false, colorWeightBlue));
+        weights.push(createCylinderWeight(0.2, densityOfABSPlastic, 0.7, x+=0.1, 1, "", false, colorWeightRed));
+        weights.push(createCylinderWeight(0.5, densityOfABSPlastic, 0.7, x+=0.1, 1, "", false, colorWeightMagenta));
+        weights.push(createCylinderWeight(1.0, densityOfABSPlastic, 0.7, x+=0.1, 1, "", false, colorWeightYellow));
+        weights.push(createCylinderWeight(1.5, densityOfSteel, 0.7, x+=0.1, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(2.0, densityOfSteel, 0.7, x+=0.1, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(2.5, densityOfSteel, 0.7, x+=0.1, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(3.0, densityOfSteel, 0.7, x+=0.1, 1, "", false, colorWeightLightGray));
+        weights.push(createCylinderWeight(1.3, densityOfABSPlastic, 0.7, x+=0.1, 1, "?", true, colorWeightGreen));
 
         attachToSpring(weights[0], springs[0]);
       }
