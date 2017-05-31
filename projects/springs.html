@@ -321,7 +321,7 @@
         var xs = 0.03;
         var x = 0.1-xs;
         //           createCylinderWeight(mass, density, WHRatio, x, y, text, hideMass, color)
-        weights.push(createCylinderWeight(0.01, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightBlue));
+        weights.push(createCylinderWeight(0.02, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightBlue));
         weights.push(createCylinderWeight(0.05, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightRed));
         weights.push(createCylinderWeight(0.1, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightMagenta));
         weights.push(createCylinderWeight(0.25, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightYellow));
@@ -329,8 +329,6 @@
         weights.push(createCylinderWeight(0.75, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightLightGray));
         weights.push(createCylinderWeight(1.0, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightLightGray));
         weights.push(createCylinderWeight(0.4, densityOfSteel, 0.7, x+=xs, 1, "?", true, colorWeightGreen));
-
-        attachToSpring(weights[0], springs[0]);
       }
 
     </script>
