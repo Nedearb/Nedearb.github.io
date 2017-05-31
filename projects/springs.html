@@ -63,6 +63,7 @@
           evt.currentTarget.beingDragged = true;
 
           if(evt.currentTarget.hookOffset){
+            evt.currentTarget.newton.velocity.y = 0;
             for (var i = 0; i < springs.length; i++) {
               var spring = springs[i];
               if (spring.newton.attached == null) {
@@ -180,7 +181,7 @@
         weight.newton.position.x += (weight.newton.velocity.x) * delta;
         weight.newton.position.y += (weight.newton.velocity.y) * delta;
 
-        if(weight.newton.position.y * pixelsPerMeter + weight.h2 >= height){
+        if(!weight.newton.forces.spring.enabled && weight.newton.position.y * pixelsPerMeter + weight.h2 >= height){
           weight.newton.position.y = (height - weight.h2) / pixelsPerMeter;
           weight.newton.velocity.y = 0;
         }
@@ -225,7 +226,7 @@
 
           
           var displacement = (spring.bottomBit.y - spring.newton.relaxedLength * pixelsPerMeter) / pixelsPerMeter;
-          spring.newton.attached.newton.forces.spring.y = -displacement * spring.newton.springConstant - (spring.newton.dampingCoef) * spring.newton.attached.newton.velocity.y;
+          spring.newton.attached.newton.forces.spring.y = -displacement * spring.newton.springConstant - (spring.newton.dampingCoef*2*spring.newton.attached.newton.mass) * spring.newton.attached.newton.velocity.y;
 
           if(Math.abs(spring.x - spring.newton.attached.x) > attachDistance){
             detachFromSpring(spring);
@@ -315,12 +316,12 @@
       function setupWeightsAndSprings(){
 
         //           createSpring(springConst, dampingCoef, x, y, relaxedLength)
-        springs.push(createSpring(100, 1, .1, 0, 0.05));
+        springs.push(createSpring(100, 2, .1, 0, 0.05));
 
         var xs = 0.03;
         var x = 0.1-xs;
         //           createCylinderWeight(mass, density, WHRatio, x, y, text, hideMass, color)
-        //weights.push(createCylinderWeight(0.01, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightBlue));
+        weights.push(createCylinderWeight(0.01, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightBlue));
         weights.push(createCylinderWeight(0.05, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightRed));
         weights.push(createCylinderWeight(0.1, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightMagenta));
         weights.push(createCylinderWeight(0.25, densityOfSteel, 0.7, x+=xs, 1, "", false, colorWeightYellow));
