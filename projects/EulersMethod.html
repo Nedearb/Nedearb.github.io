@@ -58,8 +58,17 @@
 				
   				
   				for(let i = 1; i < n; i++){
+  					let nexty = ys[i-1] + h*evalFunc(func, xs[i-1], ys[i-1]);
+  					if(!isFinite(nexty)){
+  						if(isNaN(nexty)){
+  							alert("Unable to continue, result is undefined.");
+  						}else{
+  							alert("Unable to continue, result out of bounds.");
+  						}
+  						break;
+  					}
   					xs[i] = xs[i-1]+h;
-  					ys[i] = ys[i-1] + h*evalFunc(func, xs[i-1], ys[i-1]);
+  					ys[i] = nexty;
   				}
   				console.log(xs, ys);
 
@@ -77,7 +86,7 @@
 				let cell2 = row.insertCell(1);
 				cell1.innerHTML = "<center><b>x</b></center>";
 				cell2.innerHTML = "<center><b>y</b></center>";
-				for(let i = 0; i < n; i++){
+				for(let i = 0; i < xs.length; i++){
 					let row = table.insertRow(i+1);
 					let cell1 = row.insertCell(0);
 					let cell2 = row.insertCell(1);
