@@ -17,6 +17,7 @@
         border: 0px;
         border-collapse: collapse;
         padding: 0px;
+        white-space: nowrap;
       }
 
     </style>
@@ -32,24 +33,41 @@
 
       let eulersMethod = 0;
       let improvEulersMethod = 1;
-      let colors = ["blue", "red"];
-      let methodNames = ["Euler's", "Heun's"];
-      let methodChecks = ["eulersCheck", "heunsCheck"];
-      let methodEnabled = [true, true];
+      let rk4Method = 2;
+      let exactMethod = 3;
+      let colors = ["blue", "red", "green", "black"];
+      let methodNames = ["Euler's", "Heun's", "Runge–Kutta", "Exact"];
+      let methodChecks = ["eulersCheck", "heunsCheck", "rk4Check", "exactCheck"];
+      let methodEnabled = [true, true, true, false];
+      let exactFunc = "";
 
-      function init(){
+      function getElementTop(e) {
+        let top = e.offsetTop;
+        let pe = e.offsetParent;
+        while(pe != null){
+          top += pe.offsetTop;
+          pe = pe.offsetParent;
+        }
+        return top;
+      }
 
-        canvas = document.getElementById("graph");
-
-        canvas.width = document.getElementById("canvasTd").offsetWidth;
-        canvas.height = document.getElementById("canvasTd").offsetHeight;
-
+      function updateCanvasVars(){
+        let canvasTd = document.getElementById("canvasTd");
+        canvas.width = canvasTd.offsetWidth;
+        let margin = window.getComputedStyle(document.body, null).getPropertyValue('margin-bottom');
+        canvas.height = window.innerHeight - getElementTop(canvasTd) - margin.substring(0, margin.length-2);
 
         graphX = 32.5;
         graphY = 16.5;
         graphW = canvas.width-64;
         graphH = canvas.height-32;
+      }
 
+      function init(){
+
+        canvas = document.getElementById("graph");
+
+        updateCanvasVars();
       }
 
       function evalFunc(f, x, y){
@@ -96,8 +114,15 @@
           let k1 = evalFunc(func, xs[i-1], ys[i-1]);
           let k2 = evalFunc(func, xs[i-1]+h, ys[i-1]+h*k1);
           return ys[i-1] + (h/2)*(k1+k2);
+        }else if(method == rk4Method){
+          let k1 = evalFunc(func, xs[i-1], ys[i-1]);
+          let k2 = evalFunc(func, xs[i-1]+h/2, ys[i-1]+(h/2)*k1);
+          let k3 = evalFunc(func, xs[i-1]+h/2, ys[i-1]+(h/2)*k2);
+          let k4 = evalFunc(func, xs[i-1]+h, ys[i-1]+(h)*k3);
+          return ys[i-1] + (h/6)*(k1+ 2*k2 + 2*k3 + k4);
+        }else if(method == exactMethod){
+          return evalFunc(exactFunc, xs[i-1]+h);
         }
-        alert("Invalid method: ", method);
         return 0;
       }
 
@@ -107,6 +132,7 @@
         let y0 = parseFloat(document.getElementById("inY0").value);
         let h = parseFloat(document.getElementById("inH").value);
         let b = parseFloat(document.getElementById("inB").value);
+        exactFunc = document.getElementById("inExact").value;
 
         let n = ((b-x0)/h)+1;
 
@@ -172,12 +198,17 @@
           let cell1 = row.insertCell(-1);
           cell1.innerHTML = parseFloat(xs[i].toFixed(12));
           for(let j = 0; j < ys.length; j++){
-            if(methodEnabled[j]){
+            if(methodEnabled[j] && i < ys[j].length){
               let cell = row.insertCell(-1);
               cell.innerHTML = parseFloat(ys[j][i].toFixed(12));
             }
           }
         }
+
+        canvas.width = 1;
+        canvas.height = 1;
+
+        updateCanvasVars();
 
         let ctx = canvas.getContext("2d");
         let edges = prepareGraph(canvas, ctx, xs, ys);
@@ -261,7 +292,7 @@
           let d = parseFloat((yMin+(yMax-yMin)/vTicks*i).toFixed(Math.min(5, Math.ceil(-Math.log10((yMax-yMin)-Math.floor((yMax-yMin)))))));
           ctx.moveTo(graphX, Math.round(graphY+(graphH/vTicks*i)));
           ctx.lineTo(graphX+graphW, graphY+(graphH/vTicks*i));
-          ctx.fillText(d, graphX, graphY+(graphH/vTicks*(vTicks-i)), graphW/vTicks);
+          ctx.fillText(d, graphX, graphY+(graphH/vTicks*(vTicks-i)), graphX);
         }
 
         ctx.stroke();
@@ -277,30 +308,38 @@
       <br />
       Created by Braeden Atlee on 10/26/2017
     </h5>
-    <table class="in" width="100%" height="90%">
+    <table class="in" width="100%">
       <tr>
         <td class="in" valign="top">
           <table class="in">
-            <tr><td class="in"><p>y'= f(x,y)= </p></td><td class="in"><input type="text" id="inFunc" value="x^3*e^(-2*x)-2*y"></input></td></tr>
-      <tr><td class="in"><p>x0 = </p></td><td class="in"><input type="text" id="inX0" value="0"></input></td></tr>
-  <tr><td class="in"><p>y(x0) = </p></td><td class="in"><input type="text" id="inY0" value="1"></input></td></tr>
-<tr><td class="in"><p>Step Size: </p></td><td class="in"><input type="text" id="inH" value="0.1"></input></td></tr>
-<tr><td class="in"><p>Maximum x: </p></td><td class="in"><input type="text" id="inB" value="2"></input></td></tr>
-<tr><td span="2" class="in">
-  <input type="checkbox" id="eulersCheck" checked="checked">Euler's<br />
-  <input type="checkbox" id="heunsCheck" checked="checked">Heun's<br />
-  <button type="button" onclick="calculate()">Estimate</button><br />
-  </td></tr>
-</table>
-<br />
-<table id="outputs">
-</table>
-</td>
-<td class="in" valign="top" id="canvasTd">
-  <canvas id="graph" width="400" height="300"></canvas>
-</td>
-</tr>
-</table>
-</body>
+            <tr><td class="in"><p align="right">y'=&nbsp</p></td><td class="in"><input type="text" id="inFunc" value="sin(x)^2*y"></td></tr>
+            <tr><td class="in"><p align="right">x<sub>0</sub> =&nbsp</p></td><td class="in"><input type="text" id="inX0" value="0"></td></tr>
+            <tr><td class="in"><p align="right">y(x<sub>0</sub>) =&nbsp</p></td><td class="in"><input type="text" id="inY0" value="2"></td></tr>
+            <tr><td class="in"><p align="right">Step Size:&nbsp</p></td><td class="in"><input type="text" id="inH" value="0.5"></td></tr>
+            <tr><td class="in"><p align="right">Maximum x:&nbsp</p></td><td class="in"><input type="text" id="inB" value="5.5"></td></tr>
+            <tr><td class="in"><p align="right"><input type="checkbox" id="exactCheck">Exact y=&nbsp</p></td><td class="in"><input type="text" id="inExact" value="2*e^(0.5*(x-sin(x)*cos(x)))"></td></tr>
+            <tr><td class="in"><br /></td></tr>
+            <tr>
+              <td colspan="2" class="in">
+                <input type="checkbox" id="eulersCheck" checked="checked">Euler's Method<br />
+                <input type="checkbox" id="heunsCheck" checked="checked">Heun's (Improved Euler's)<br />
+                <input type="checkbox" id="rk4Check" checked="checked">Classic Runge–Kutta<br />
+                <button type="button" onclick="calculate()">Approximate</button><br />
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td class="in" rowspan="2" width="100%" valign="top" id="canvasTd">
+          <canvas id="graph" width="400" height="300"></canvas>
+        </td>
+      </tr>
+      <tr>
+        <td class="in" valign="top">
+          <table id="outputs">
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
 
 </html>
