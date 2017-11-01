@@ -107,6 +107,14 @@
         return false;
       }
 
+      function getFirstWithMethod(method, func, x0, y0){
+        if(method == exactMethod){
+          return evalFunc(exactFunc, x0);
+        }else{
+          return y0;
+        }
+      }
+      
       function getNextWithMethod(method, i, func, xs, ys, h){
         if(method == eulersMethod){
           return ys[i-1] + h*evalFunc(func, xs[i-1], ys[i-1]);
@@ -140,7 +148,7 @@
         let ys = [];
 
         for(let i = 0; i < methodNames.length; i++){
-          ys[i] = [y0];
+          ys[i] = [getFirstWithMethod(i, func, x0, y0)];
           methodEnabled[i] = document.getElementById(methodChecks[i]).checked;
         }
 
