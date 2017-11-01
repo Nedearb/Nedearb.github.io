@@ -1,30 +1,30 @@
 <html>
-	<head>
-		<style>
-		h5 {
-			font-family: Sans-Serif
-		}
-		p {
-			font-family: monospace
-		}
-		
-		table, th, td {
-			border: 1px solid black;
-			border-collapse: collapse;
-			padding: 3px;
-		}
-		table.in, td.in {
-			border: 0px;
-			border-collapse: collapse;
-			padding: 0px;
-		}
-		
-		</style>
-		<script type="text/javascript">
+  <head>
+    <style>
+      h5 {
+        font-family: Sans-Serif
+      }
+      p {
+        font-family: monospace
+      }
+
+      table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        padding: 3px;
+      }
+      table.in, td.in {
+        border: 0px;
+        border-collapse: collapse;
+        padding: 0px;
+      }
+
+    </style>
+    <script type="text/javascript">
 
       let canvas;
 
-        
+
       let graphX;
       let graphY;
       let graphW;
@@ -38,13 +38,13 @@
       let methodEnabled = [true, true];
 
       function init(){
-        
+
         canvas = document.getElementById("graph");
-        
+
         canvas.width = document.getElementById("canvasTd").offsetWidth;
         canvas.height = document.getElementById("canvasTd").offsetHeight;
 
-        
+
         graphX = 32.5;
         graphY = 16.5;
         graphW = canvas.width-64;
@@ -52,7 +52,7 @@
 
       }
 
-			function evalFunc(f, x, y){
+      function evalFunc(f, x, y){
 
         let pi = Math.PI;
         let e = Math.exp(1);
@@ -71,11 +71,11 @@
         function atanh(x){ return Math.atanh(x); }
         function log(x){ return Math.log10(x); }
         function ln(x){ return Math.log(x); }
-        
-				f = f.replace(/\^/g, "**");
-				console.log(f);
-				return eval(f);
-			}
+
+        f = f.replace(/\^/g, "**");
+        console.log(f);
+        return eval(f);
+      }
 
       function badNum(n){
         if(!isFinite(n)){
@@ -100,15 +100,15 @@
         alert("Invalid method: ", method);
         return 0;
       }
-			
-			function calculate(){
-				let func = document.getElementById("inFunc").value;
-				let x0 = parseFloat(document.getElementById("inX0").value);
-				let y0 = parseFloat(document.getElementById("inY0").value);
-				let h = parseFloat(document.getElementById("inH").value);
-				let b = parseFloat(document.getElementById("inB").value);
-				
-				let n = ((b-x0)/h)+1;
+
+      function calculate(){
+        let func = document.getElementById("inFunc").value;
+        let x0 = parseFloat(document.getElementById("inX0").value);
+        let y0 = parseFloat(document.getElementById("inY0").value);
+        let h = parseFloat(document.getElementById("inH").value);
+        let b = parseFloat(document.getElementById("inB").value);
+
+        let n = ((b-x0)/h)+1;
 
         let xs = [x0];
         let ys = [];
@@ -122,10 +122,10 @@
         //let k2s = [];
 
         try{
-				
+
           let stillOk = methodEnabled.slice();
-  				
-  				for(let i = 1; i < n; i++){
+
+          for(let i = 1; i < n; i++){
 
             let someOk = false;
 
@@ -144,32 +144,32 @@
             if(!someOk){
               break;
             }
-  					xs[i] = i*h;
-  				}
-  				console.log(xs, ys);
+            xs[i] = i*h;
+          }
+          console.log(xs, ys);
           //console.log(k1s, k2s);
 
         }catch(e){
           alert("Failed to evaluate function.");
           return;
         }
-				
-				let table = document.getElementById("outputs");
-				while(table.rows.length > 0) {
-					table.deleteRow(0);
-				}
-				let row = table.insertRow(0);
-				let cell1 = row.insertCell(-1);
+
+        let table = document.getElementById("outputs");
+        while(table.rows.length > 0) {
+          table.deleteRow(0);
+        }
+        let row = table.insertRow(0);
+        let cell1 = row.insertCell(-1);
         for(let i = 0; i < ys.length; i++){
           if(methodEnabled[i]){
             let cell = row.insertCell(-1);
             cell.innerHTML = "<center><b style=\"color: " + colors[i] + "\">y (" + methodNames[i] + ")</b></center>";
           }
         }
-				cell1.innerHTML = "<center><b>x</b></center>";
-				for(let i = 0; i < xs.length; i++){
-					let row = table.insertRow(i+1);
-					let cell1 = row.insertCell(-1);
+        cell1.innerHTML = "<center><b>x</b></center>";
+        for(let i = 0; i < xs.length; i++){
+          let row = table.insertRow(i+1);
+          let cell1 = row.insertCell(-1);
           cell1.innerHTML = parseFloat(xs[i].toFixed(12));
           for(let j = 0; j < ys.length; j++){
             if(methodEnabled[j]){
@@ -177,22 +177,22 @@
               cell.innerHTML = parseFloat(ys[j][i].toFixed(12));
             }
           }
-				}
-				
+        }
+
         let ctx = canvas.getContext("2d");
         let edges = prepareGraph(canvas, ctx, xs, ys);
         for(let i = 0; i < ys.length; i++){
-				  if(methodEnabled[i]){
+          if(methodEnabled[i]){
             drawGraph(canvas, ctx, xs, ys[i], edges, colors[i]);
           }
         }
-				
-			}
+
+      }
 
       function drawGraph(canvas, ctx, xs, ys, edges, color){
         ctx.beginPath();
         ctx.strokeStyle = color;
-        
+
         for(let i=0; i < xs.length; i++){
           xp = graphX+((xs[i]-edges.xMin)/(edges.xMax-edges.xMin))*graphW;
           yp = graphY+(1-(ys[i]-edges.yMin)/(edges.yMax-edges.yMin))*graphH;
@@ -204,9 +204,9 @@
           ctx.fillRect(xp-0.5, yp-0.5, 1, 1);
         }
         ctx.stroke();
-        
+
         ctx.beginPath();
-        
+
         for(let i=0; i < xs.length; i++){
           xp = graphX+((xs[i]-edges.xMin)/(edges.xMax-edges.xMin))*graphW;
           yp = graphY+(1-(ys[i]-edges.yMin)/(edges.yMax-edges.yMin))*graphH;
@@ -214,10 +214,10 @@
         }
         ctx.fill();
       }
-			
-			function prepareGraph(canvas, ctx, xs, yss){
-				let xMin = parseFloat(Math.min.apply(Math, xs).toFixed(12));
-				let xMax = parseFloat(Math.max.apply(Math, xs).toFixed(12));
+
+      function prepareGraph(canvas, ctx, xs, yss){
+        let xMin = parseFloat(Math.min.apply(Math, xs).toFixed(12));
+        let xMax = parseFloat(Math.max.apply(Math, xs).toFixed(12));
 
         let yMin = Infinity;
         let yMax = -Infinity;
@@ -235,72 +235,72 @@
           yMax+=0.5;
         }
 
-				ctx.clearRect(0, 0, canvas.width, canvas.height);
-				
-				ctx.beginPath();
-				ctx.strokeStyle = "lightGray";
-				//ctx.moveTo(graphX, graphY);
-				//ctx.lineTo(graphX, graphY+graphH);
-				//ctx.lineTo(graphX+graphW, graphY+graphH);
-				
-				let hTicks = 5;
-				let vTicks = 5;
-				
-				ctx.font="12px Verdana";
-				ctx.textAlign="center"; 
-				//ctx.fillText("y",graphX-4, graphY-6);
-				//ctx.fillText("x",graphX+graphW+4, graphY+graphH+3);
-				for(let i=0; i <= hTicks; i++){
-					let d = parseFloat((xMin+(xMax-xMin)/hTicks*i).toFixed(Math.min(5, Math.ceil(-Math.log10((xMax-xMin)-Math.floor((xMax-xMin)))))));
-					ctx.moveTo(graphX+(graphW/hTicks*i), graphY);
-					ctx.lineTo(graphX+(graphW/hTicks*i), graphY+graphH+2);
-					ctx.fillText(d, graphX+(graphW/hTicks*i), graphY+graphH+12, graphW/hTicks);
-				}
-				ctx.textAlign="right"; 
-				for(let i=0; i <= vTicks; i++){
-					let d = parseFloat((yMin+(yMax-yMin)/vTicks*i).toFixed(Math.min(5, Math.ceil(-Math.log10((yMax-yMin)-Math.floor((yMax-yMin)))))));
-					ctx.moveTo(graphX, Math.round(graphY+(graphH/vTicks*i)));
-					ctx.lineTo(graphX+graphW, graphY+(graphH/vTicks*i));
-					ctx.fillText(d, graphX, graphY+(graphH/vTicks*(vTicks-i)), graphW/vTicks);
-				}
-				
-				ctx.stroke();
-				
-				return {xMin:xMin, yMin:yMin, xMax:xMax, yMax:yMax};
-			}
-		
-		</script>
-	</head>
-	<body onload="init()">
-		<h5>
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.beginPath();
+        ctx.strokeStyle = "lightGray";
+        //ctx.moveTo(graphX, graphY);
+        //ctx.lineTo(graphX, graphY+graphH);
+        //ctx.lineTo(graphX+graphW, graphY+graphH);
+
+        let hTicks = 5;
+        let vTicks = 5;
+
+        ctx.font="12px Verdana";
+        ctx.textAlign="center"; 
+        //ctx.fillText("y",graphX-4, graphY-6);
+        //ctx.fillText("x",graphX+graphW+4, graphY+graphH+3);
+        for(let i=0; i <= hTicks; i++){
+          let d = parseFloat((xMin+(xMax-xMin)/hTicks*i).toFixed(Math.min(5, Math.ceil(-Math.log10((xMax-xMin)-Math.floor((xMax-xMin)))))));
+          ctx.moveTo(graphX+(graphW/hTicks*i), graphY);
+          ctx.lineTo(graphX+(graphW/hTicks*i), graphY+graphH+2);
+          ctx.fillText(d, graphX+(graphW/hTicks*i), graphY+graphH+12, graphW/hTicks);
+        }
+        ctx.textAlign="right"; 
+        for(let i=0; i <= vTicks; i++){
+          let d = parseFloat((yMin+(yMax-yMin)/vTicks*i).toFixed(Math.min(5, Math.ceil(-Math.log10((yMax-yMin)-Math.floor((yMax-yMin)))))));
+          ctx.moveTo(graphX, Math.round(graphY+(graphH/vTicks*i)));
+          ctx.lineTo(graphX+graphW, graphY+(graphH/vTicks*i));
+          ctx.fillText(d, graphX, graphY+(graphH/vTicks*(vTicks-i)), graphW/vTicks);
+        }
+
+        ctx.stroke();
+
+        return {xMin:xMin, yMin:yMin, xMax:xMax, yMax:yMax};
+      }
+
+    </script>
+  </head>
+  <body onload="init()">
+    <h5>
       First Order Ordinary Differential Equation Approximator
       <br />
       Created by Braeden Atlee on 10/26/2017
     </h5>
-		<table class="in" width="100%" height="90%">
-			<tr>
-				<td class="in" valign="top">
-					<table class="in">
-						<tr><td class="in"><p>y'= f(x,y)= </p></td><td class="in"><input type="text" id="inFunc" value="x^3*e^(-2*x)-2*y"></input></td></tr>
-						<tr><td class="in"><p>x0 = </p></td><td class="in"><input type="text" id="inX0" value="0"></input></td></tr>
-						<tr><td class="in"><p>y(x0) = </p></td><td class="in"><input type="text" id="inY0" value="1"></input></td></tr>
-						<tr><td class="in"><p>Step Size: </p></td><td class="in"><input type="text" id="inH" value="0.1"></input></td></tr>
-						<tr><td class="in"><p>Maximum x: </p></td><td class="in"><input type="text" id="inB" value="2"></input></td></tr>
-            <tr><td span="2" class="in">
-              <input type="checkbox" id="eulersCheck" checked="checked">Euler's<br />
-              <input type="checkbox" id="heunsCheck" checked="checked">Heun's<br />
-              <button type="button" onclick="calculate()">Estimate</button><br />
-            </td></tr>
-					</table>
-					<br />
-					<table id="outputs">
-					</table>
-				</td>
-				<td class="in" valign="top" id="canvasTd">
-					<canvas id="graph" width="400" height="300"></canvas>
-				</td>
-			</tr>
-		</table>
-	</body>
+    <table class="in" width="100%" height="90%">
+      <tr>
+        <td class="in" valign="top">
+          <table class="in">
+            <tr><td class="in"><p>y'= f(x,y)= </p></td><td class="in"><input type="text" id="inFunc" value="x^3*e^(-2*x)-2*y"></input></td></tr>
+      <tr><td class="in"><p>x0 = </p></td><td class="in"><input type="text" id="inX0" value="0"></input></td></tr>
+  <tr><td class="in"><p>y(x0) = </p></td><td class="in"><input type="text" id="inY0" value="1"></input></td></tr>
+<tr><td class="in"><p>Step Size: </p></td><td class="in"><input type="text" id="inH" value="0.1"></input></td></tr>
+<tr><td class="in"><p>Maximum x: </p></td><td class="in"><input type="text" id="inB" value="2"></input></td></tr>
+<tr><td span="2" class="in">
+  <input type="checkbox" id="eulersCheck" checked="checked">Euler's<br />
+  <input type="checkbox" id="heunsCheck" checked="checked">Heun's<br />
+  <button type="button" onclick="calculate()">Estimate</button><br />
+  </td></tr>
+</table>
+<br />
+<table id="outputs">
+</table>
+</td>
+<td class="in" valign="top" id="canvasTd">
+  <canvas id="graph" width="400" height="300"></canvas>
+</td>
+</tr>
+</table>
+</body>
 
 </html>
