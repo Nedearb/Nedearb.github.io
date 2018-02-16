@@ -1,0 +1,96 @@
+<html>
+    <head>
+        <script type="text/javascript">
+            
+            let ops = ["+", "-", "~", "*", "/", "\\"];
+            let opops = ["-", "~", "+", "/", "\\", "*"];
+
+            let go = function(){
+                let nums = document.getElementById("inputNumbers").value.split(",").map(Number);
+                let goal = parseInt(document.getElementById("goalNumber").value, 10);
+                let output = document.getElementById("outputArea");
+                let qty = 0;
+                output.innerHTML = "";
+                solve(nums, goal, [], function(out){
+                    output.innerHTML += out + "\n";
+                    qty += 1;
+
+                });
+                if(qty == 0){
+                    output.innerHTML = "No Solutions";
+                }else{
+                    output.innerHTML = "Found "+qty+" solutions\n"+output.innerHTML;
+                }
+            }
+
+            let convertToEquation = function(sequenced){
+                let str = ""+sequenced[0];
+                for(let i = 1; i < sequenced.length; i+=2){
+                    if(sequenced[i] == "+"){
+                        str += "+"+sequenced[i+1];
+                    }else if(sequenced[i] == "-"){
+                        str += "-"+sequenced[i+1];
+                    }else if(sequenced[i] == "~"){
+                        str = sequenced[i+1]+"-("+str+")";
+                    }else if(sequenced[i] == "*"){
+                        str = "("+str+")*"+sequenced[i+1];
+                    }else if(sequenced[i] == "/"){
+                        str = "("+str+")/"+sequenced[i+1];
+                    }else if(sequenced[i] == "\\"){
+                        str = sequenced[i+1]+"/("+str+")";
+                    }
+                }
+                return str;
+            }
+
+            let solve = function(inputs, goal, history, logFunc){
+                if(history == undefined){
+                    history = [];
+                }
+                if(logFunc == undefined){
+                    logFunc = console.log;
+                }
+                if(inputs.length == 1){
+                    if(inputs[0] == goal){
+                        history.unshift(inputs[0]);
+                        let str = convertToEquation(history);
+                        logFunc("Found: "+str+" = "+eval(str));
+                    }
+                }else{
+                    for(let i = 0; i < inputs.length; i++){
+                        let pick = inputs[i];
+                        let opTargets = [pick+goal, pick-goal, goal-pick, pick*goal, pick/goal, goal/pick];
+                        for(let j = 0; j < opTargets.length; j++){
+                            if(isNaN(opTargets[j])){
+                                continue;
+                            }
+                            let h = history.slice();
+                            h.unshift(pick);
+                            h.unshift(opops[j]);
+
+                            let remainingInputs = inputs.slice();
+                            remainingInputs.splice(i, 1);
+                            solve(remainingInputs, opTargets[j], h, logFunc);
+                        }
+                    }
+                }
+            }
+
+
+        </script>
+    </head>
+    <body>
+        <p>
+            <h1>Krypto solver</h1>
+            Inputs: (seperate with commas)<br />
+            <input type="text" id="inputNumbers"><br />
+            <br />
+            Goal:<br />
+            <input type="goal" id="goalNumber"><br />
+            <button type="button" onclick="go()">Go</button>
+        </p>
+
+        <pre id="outputArea"></pre>
+
+    </body>
+</html>
