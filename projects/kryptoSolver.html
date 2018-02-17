@@ -11,19 +11,19 @@
                 let output = document.getElementById("outputArea");
                 let qty = 0;
                 output.innerHTML = "";
-                solve(nums, goal, [], function(out){
+                solveWithCombos(nums, goal, [], [], function(out){
                     output.innerHTML += out + "\n";
                     qty += 1;
 
                 });
                 if(qty == 0){
-                    output.innerHTML = "No Solutions";
+                    output.innerHTML = "No Solutions found";
                 }else{
                     output.innerHTML = "Found "+qty+" solutions\n"+output.innerHTML;
                 }
             }
 
-            let convertToEquation = function(sequenced){
+            let convertToEquation = function(sequenced, groupings){
                 let str = ""+sequenced[0];
                 for(let i = 1; i < sequenced.length; i+=2){
                     if(sequenced[i] == "+"){
@@ -40,21 +40,28 @@
                         str = sequenced[i+1]+"/("+str+")";
                     }
                 }
+                for(let i = 0; i < groupings.length; i++){
+                    str = str.replace(groupings[i][0], "("+(groupings[i][1]+groupings[i][2]+groupings[i][3])+")");
+                }
                 return str;
             }
 
-            let solve = function(inputs, goal, history, logFunc){
+            let solve = function(inputs, goal, history, groupings, logFunc){
                 if(history == undefined){
                     history = [];
                 }
                 if(logFunc == undefined){
                     logFunc = console.log;
                 }
+                if(groupings == undefined){
+                    groupings = [];
+                }
                 if(inputs.length == 1){
                     if(inputs[0] == goal){
                         history.unshift(inputs[0]);
-                        let str = convertToEquation(history);
+                        let str = convertToEquation(history, groupings);
                         logFunc("Found: "+str+" = "+eval(str));
+                        //logFunc("Found: "+history);
                     }
                 }else{
                     for(let i = 0; i < inputs.length; i++){
@@ -70,7 +77,40 @@
 
                             let remainingInputs = inputs.slice();
                             remainingInputs.splice(i, 1);
-                            solve(remainingInputs, opTargets[j], h, logFunc);
+                            solve(remainingInputs, opTargets[j], h, groupings, logFunc);
+                        }
+                    }
+                }
+            }
+
+            let solveWithCombos = function(inputs, goal, history, groupings, logFunc){
+                if(history == undefined){
+                    history = [];
+                }
+                if(groupings == undefined){
+                    groupings = [];
+                }
+                if(logFunc == undefined){
+                    logFunc = console.log;
+                }
+                solve(inputs, goal, history, groupings, logFunc);
+                for(let i = 0; i < inputs.length; i++){
+                    for(let j = i+1; j < inputs.length; j++){
+                        let a = inputs[i];
+                        let b = inputs[j];
+                        let remainingInputs = inputs.slice();
+                        remainingInputs.splice(i, 1);
+                        remainingInputs.splice(j-1, 1);
+                        //console.log(remainingInputs, a, b);
+                        let combos = [a+b, a-b, b-a, a*b, a/b, b/a];
+                        for(let k = 0; k < combos.length; k++){
+                            let newInputs = remainingInputs.slice();
+                            newInputs.push(combos[k]);
+                            //let h = history.slice();
+                            //h.unshift("["+combos[k]+"=("+a+ops[k]+b+")]");
+                            let g = groupings.slice();
+                            g.push([combos[k], a, ops[k], b]);
+                            solveWithCombos(newInputs, goal, history, g, logFunc);
                         }
                     }
                 }
@@ -82,6 +122,8 @@
     <body>
         <p>
             <h1>Krypto solver</h1>
+            <p>Shows repeats, working on removing those.
+            <br />Algorithm developed by Alex Akiu</p>
             Inputs: (seperate with commas)<br />
             <input type="text" id="inputNumbers"><br />
             <br />
