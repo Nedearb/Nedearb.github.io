@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+  .sortable {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+      width: 60%;
+  }
+  .sortable li{
+    margin: 0 3px 3px 3px;
+    padding: 0.4em;
+    padding-left: 1.5em;
+    font-size: 1em;
+    height: 18px;
+  }
+  .sortable li input{
+    font-size: 1.4em;
+    height: 18px;
+  }
+  .sortable li span {
+    position: absolute;
+    margin-left: -1.3em;
+  }
+  </style>
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script>
+  $(function() {
+    $("#initiative").sortable();
+    $("#initiative").disableSelection();
+
+    $("#newPlayer").on('keyup', function (e) {
+      if (e.keyCode == 13) {
+        addNewPlayer();
+        $("#newPlayer").select();
+      }
+    });
+    $("#newNPC").on('keyup', function (e) {
+      if (e.keyCode == 13) {
+        addNewNPC();
+        $("#newNPC").select();
+      }
+    });
+  });
+
+  nextId = 0;
+
+  function addNewPlayer(){
+    let text = $("#newPlayer").val();
+
+    let id = "select"+nextId;
+    nextId+=1;
+
+    let tag = "<li id=\""+id+"\" class=\"ui-state-default\">";
+    tag += "<span class=\"ui-icon ui-icon-arrowthick-2-n-s\"></span>";
+    tag += "<button onclick=\"$(&quot;#"+id+"&quot;).remove();\">x</button>";
+    tag += " <input type=\"text\" size=\"10\" value=\"\"/> ";
+    tag += text;
+    tag += "</li>";
+
+    $("#initiative").append(tag);
+  }
+
+  function addNewNPC(){
+    let text = $("#newNPC").val();
+
+    let id = "select"+nextId;
+    nextId+=1;
+
+    let tag = "<li id=\""+id+"\" class=\"ui-state-default\">";
+    tag += "<span class=\"ui-icon ui-icon-arrowthick-2-n-s\"></span>";
+    tag += "<button onclick=\"$(&quot;#"+id+"&quot;).remove();\">x</button>";
+    tag += " <input id=\""+id+"hprm\" type=\"text\" size=\"2\" value=\"\"/> ";
+    tag += " <input id=\""+id+"hp\" type=\"text\" size=\"4\" value=\"\"/> /";
+    tag += " <input id=\""+id+"hpmx\" type=\"text\" size=\"4\" value=\"\"/> ";
+    tag += text;
+    tag += "</li>";
+
+    $("#initiative").append(tag);
+
+    $("#"+id+"hprm").on('keyup', function (e) {
+      if (e.keyCode == 13) {
+        $("#"+id+"hp").val($("#"+id+"hp").val() - $("#"+id+"hprm").val());
+        $("#"+id+"hprm").val("");
+      }
+    });
+
+    $("#"+id+"hpmx").on('keyup', function (e) {
+      if (e.keyCode == 13) {
+        $("#"+id+"hp").val($("#"+id+"hpmx").val());
+      }
+    });
+  }
+
+  </script>
+</head>
+<body>
+ 
+<ul id="initiative" class="sortable">
+
+</ul>
+<br/>
+<br/>
+<input id="newPlayer" type="text"/> Add Player
+<br/>
+<input id="newNPC" type="text"/> Add NPC
+<br/>
+
+ 
+</body>
+</html>
