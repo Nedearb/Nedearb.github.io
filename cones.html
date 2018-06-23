@@ -1,0 +1,124 @@
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script type="text/javascript">
+
+        let canvas;
+        let canvasEle;
+        let context
+        let width;
+        let height;
+            
+        let cx;
+        let cy;
+
+        let radius = function(t, g, o, r, h){
+            let theta = t*2*Math.PI/g;
+            return Math.sqrt((o-r*Math.cos(theta))**2 + (r*Math.sin(theta))**2 + (h**2));
+        }
+
+        let redraw = function(){
+
+            context.fillStyle = "#000000";
+            context.fillRect(0, 0, width, height);
+            context.fillStyle = "#FFFFFF";
+            context.fillRect(1, 1, width-2, height-2);
+
+            //let points = [];
+
+            let divisions = parseFloat($("#paramDivs").val());
+            let baseRadius = parseFloat($("#paramRadius").val());
+            let pointHeight = parseFloat($("#paramHeight").val());
+            let offset = parseFloat($("#paramOffset").val());
+            let scale = parseFloat($("#paramScale").val());
+            let drawInner = $("#checkDrawInner").is(":checked");
+
+            context.strokeStyle = "#000000";
+            context.beginPath();
+            context.moveTo(scale, 0);
+            context.lineTo(scale, 10);
+            context.moveTo(cx, cy);
+            let a;
+            let c = radius(0, divisions, offset, baseRadius, pointHeight);
+            let b = (2*Math.PI*baseRadius)/divisions
+            let phi = 0;
+            let area = 0;
+            for(let i = 0; i < divisions; i++){
+                a = c;
+                c = radius(i+1, divisions, offset, baseRadius, pointHeight);
+                let x = a*Math.cos(phi);
+                let y = a*Math.sin(phi);
+                //points.push({"x":x, "y":y});
+                context.lineTo(cx+x*scale, cy+y*scale);
+                if(drawInner){
+                    context.lineTo(cx, cy);
+                    context.lineTo(cx+x*scale, cy+y*scale);
+                }
+                phi += Math.acos((a**2-b**2+c**2)/(2*a*c));
+                let p = (a+b+c)/2;
+                area += Math.sqrt(p*(p-a)*(p-b)*(p-c));
+            }
+            $("#display").html("Area: "+area);
+            let x = c*Math.cos(phi);
+            let y = c*Math.sin(phi);
+            //points.push({"x":x, "y":y});
+            context.lineTo(cx+x*scale, cy+y*scale);
+            context.closePath();
+            context.stroke();
+
+        }
+
+        $(function() {
+
+            canvas = $("#mainCanvas");
+            canvasEle = canvas.get(0);
+            context = canvasEle.getContext("2d");
+            width = canvas.width();
+            height = canvas.height();
+
+            cx = width/2;
+            cy = height/2;
+
+            $("body").keydown(function(e){
+                if(e.key == "ArrowRight" || e.key == "d"){
+                    cx += 10;
+                    redraw();
+                } else if(e.key == "ArrowLeft" || e.key == "a"){
+                    cx -= 10;
+                    redraw();
+                } else if(e.key == "ArrowUp" || e.key == "w"){
+                    cy -= 10;
+                    redraw();
+                } else if(e.key == "ArrowDown" || e.key == "s"){
+                    cy += 10;
+                    redraw();
+                }
+            });
+
+            redraw();
+
+        });
+
+    </script>
+</head>
+<body>
+
+    <canvas width="640" height="480" id="mainCanvas"></canvas>
+    <br />
+    Divisions <input onchange="redraw()" id="paramDivs" type="text" value="24">
+    <br />
+    Base Radius <input onchange="redraw()" id="paramRadius" type="text" value="2">
+    <br />
+    Height <input onchange="redraw()" id="paramHeight" type="text" value="8">
+    <br />
+    Offset <input onchange="redraw()" id="paramOffset" type="text" value="4">
+    <br />
+    Scale <input onchange="redraw()" id="paramScale" type="text" value="20">
+    <br />
+    Draw inner lines <input onchange="redraw()" id="checkDrawInner" type="checkbox">
+    <br />
+    <p>Use arrow keys or WASD to move image</p>
+    <p id="display"></p>
+
+</body>
+</html>
