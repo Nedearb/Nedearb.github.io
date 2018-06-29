@@ -32,6 +32,7 @@
             let offset = parseFloat($("#paramOffset").val());
             let scale = parseFloat($("#paramScale").val());
             let drawInner = $("#checkDrawInner").is(":checked");
+            let drawBase = $("#checkDrawBase").is(":checked");
 
             context.strokeStyle = "#000000";
             context.beginPath();
@@ -43,6 +44,7 @@
             let b = (2*Math.PI*baseRadius)/divisions
             let phi = 0;
             let area = 0;
+            let lastPhi = 0;
             for(let i = 0; i < divisions; i++){
                 a = c;
                 c = radius(i+1, divisions, offset, baseRadius, pointHeight);
@@ -54,6 +56,7 @@
                     context.lineTo(cx, cy);
                     context.lineTo(cx+x*scale, cy+y*scale);
                 }
+                lastPhi = phi;
                 phi += Math.acos((a**2-b**2+c**2)/(2*a*c));
                 let p = (a+b+c)/2;
                 area += Math.sqrt(p*(p-a)*(p-b)*(p-c));
@@ -63,6 +66,7 @@
             let y = c*Math.sin(phi);
             //points.push({"x":x, "y":y});
             context.lineTo(cx+x*scale, cy+y*scale);
+
             context.closePath();
             context.stroke();
 
@@ -102,6 +106,8 @@
     </script>
 </head>
 <body>
+
+    <h2>Oblique Cone Net Generator</h2>
 
     <canvas width="640" height="480" id="mainCanvas"></canvas>
     <br />

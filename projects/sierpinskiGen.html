@@ -40,8 +40,8 @@
 
         let updateJumps = function(){
             jumpFraction = parseFloat($("#jumpFraction").val());
-            xPostJump = parseFloat($("#xPostJump").val());
-            yPostJump = parseFloat($("#yPostJump").val());
+            //xPostJump = parseFloat($("#xPostJump").val());
+            //yPostJump = parseFloat($("#yPostJump").val());
         }
 
         let stop = function(){
@@ -125,10 +125,6 @@
     <button id="mainButton"></button>
     <br />
     Jump Fraction: <input onchange="updateJumps" id="jumpFraction" type="text" value="0.5">
-    <br />
-    X Post-jump: <input onchange="updateJumps" id="xPostJump" type="text" value="0">
-    <br />
-    Y Post-jump: <input onchange="updateJumps" id="yPostJump" type="text" value="0">
-
+    
 </body>
 </html>
