@@ -206,7 +206,11 @@ let moveAndMergeTile = function(row, col, dirRow, dirCol){
         let num = tile.getAttribute("tilenum");
         if(num == tileElements[newRow][newCol].getAttribute("tilenum")){
             tile.setAttribute("tilenum", num*2);
-            tileContainer.removeChild(tileElements[newRow][newCol]);
+            let prev = tileElements[newRow][newCol];
+            prev.style.opacity = 0;
+            setTimeout(function(){
+                tileContainer.removeChild(prev);
+            }, 500);
         }else{
             return false;
         }
