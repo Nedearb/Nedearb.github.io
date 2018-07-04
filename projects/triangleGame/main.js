@@ -194,6 +194,10 @@ let addTile = function(row, col, value){
     newTile.style.position = "absolute";
     newTile.style.left = pos.x+'px';
     newTile.style.top = pos.y+'px';
+    newTile.style.opacity = 0;
+    setTimeout(function(){
+        newTile.style.opacity = 1;
+    }, 100);
     tileContainer.appendChild(newTile);
     tileElements[row][col] = newTile;
 }
