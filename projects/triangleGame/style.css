@@ -48,38 +48,6 @@ body {
     transition-duration: 0.5s;
 }
 
-.tilePiece.gridA {
-    animation-duration: 0.1s;
-    animation-timing-function: ease-out;
-    animation-iteration-count: 1;
-    animation-name: tileAppearA;
-}
-
-.tilePiece.gridV {
-    animation-duration: 0.1s;
-    animation-timing-function: ease-out;
-    animation-iteration-count: 1;
-    animation-name: tileAppearV;
-}
-
-@keyframes tileAppearA {
-    0% {
-        transform: scale(0);
-    }
-    100% {
-        transform: scale(0.579, 1);
-    }
-}
-
-@keyframes tileAppearV {
-    0% {
-        transform: translate(12px, -24px) rotate(60deg) scale(0);
-    }
-    100% {
-        transform: translate(12px, -24px) rotate(60deg) scale(0.579, 1);
-    }
-}
-
 span {
     font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
 
