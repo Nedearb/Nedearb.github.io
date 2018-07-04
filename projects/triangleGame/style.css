@@ -1,6 +1,13 @@
 
+html {
+    overflow: hidden;
+}
+
 body {
     background-color: #776868;
+    overflow: hidden;
+    overscroll-behavior: contain;
+    width: 426px;
 }
 
 .gridPiece {
