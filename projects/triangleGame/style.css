@@ -1,7 +1,6 @@
 
 html {
     overflow: hidden;
-    width: 100%;
 }
 
 body {
@@ -9,6 +8,8 @@ body {
     overflow: hidden;
     overscroll-behavior: contain;
     width: 426px;
+    height: 375px;
+    zoom: 0.8;
 }
 
 .gridPiece {
