@@ -68,6 +68,7 @@ let init = function(){
             moved = shiftBackwardSlash(true);
         }
         if(moved){
+            cleanRecentMerges();
             addNewRandomTile();
         }
     };
@@ -115,6 +116,7 @@ let init = function(){
         }
 
         if(moved){
+            cleanRecentMerges();
             addNewRandomTile();
         }
 
@@ -150,6 +152,19 @@ let init = function(){
 
     
 
+}
+
+let cleanRecentMerges = function(){
+    for(let row = 0; row < rowQty; row++){
+        for(let col = 0; col <= row*2; col++){
+            let cell = tileElements[row][col];
+            if(cell != null){
+                if(cell.hasAttribute("recentMerge")){
+                    cell.removeAttribute("recentMerge");
+                }
+            }
+        }
+    }
 }
 
 let findAllOpenTiles = function(){
@@ -205,12 +220,17 @@ let moveAndMergeTile = function(row, col, dirRow, dirCol){
     if(tileElements[newRow][newCol] != null){
         let num = tile.getAttribute("tilenum");
         if(num == tileElements[newRow][newCol].getAttribute("tilenum")){
-            tile.setAttribute("tilenum", num*2);
-            let prev = tileElements[newRow][newCol];
-            prev.style.opacity = 0;
-            setTimeout(function(){
-                tileContainer.removeChild(prev);
-            }, 500);
+            if(!tile.hasAttribute("recentMerge") && !tileElements[newRow][newCol].hasAttribute("recentMerge")){
+                tile.setAttribute("tilenum", num*2);
+                let prev = tileElements[newRow][newCol];
+                prev.style.opacity = 0;
+                setTimeout(function(){
+                    tileContainer.removeChild(prev);
+                }, 500);
+                tile.setAttribute("recentMerge", "")
+            }else{
+                return false;
+            }
         }else{
             return false;
         }
