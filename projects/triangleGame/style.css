@@ -7,8 +7,6 @@ body {
     background-color: #776868;
     overflow: hidden;
     overscroll-behavior: contain;
-    width: 426px;
-    height: 375px;
     zoom: 0.8;
 }
 
