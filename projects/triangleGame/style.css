@@ -10,6 +10,91 @@ body {
     zoom: 0.8;
 }
 
+button.tryAgain {
+    font-size: 32px;
+
+    font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+
+    background-color: transparent;
+
+    position: absolute;
+    left:125px;
+
+}
+
+.message {
+    font-size: 48px;
+    position: absolute;
+    top:160px;
+}
+
+.msgLeft {
+    left:18px;
+    transform: rotate(-60deg);
+    animation: msgLeftSlideIn;
+    animation-duration: 1s;
+    animation-iteration-count: 1;
+    animation-delay: 0s;
+    animation-timing-function: ease-out;
+}
+
+.msgRight {
+    left:280px;
+    transform: rotate(60deg);
+    animation: msgRightSlideIn;
+    animation-duration: 1s;
+    animation-iteration-count: 1;
+    animation-delay: 0s;
+    animation-timing-function: ease-out;
+}
+
+@keyframes msgLeftSlideIn {
+    0% {
+        opacity: 0;
+        transform: rotate(-60deg) translate(100px, 0px);
+    }
+    100% {
+        opacity: 1;
+        transform: rotate(-60deg);
+    }
+}
+
+@keyframes msgLeftSlideOut {
+    0% {
+        opacity: 1;
+        transform: rotate(-60deg);
+    }
+    100% {
+        opacity: 0;
+        transform: rotate(-60deg) translate(-200px, 0px);
+    }
+}
+
+@keyframes msgRightSlideIn {
+    0% {
+        opacity: 0;
+        transform: rotate(60deg) translate(-100px, 0px);
+    }
+    100% {
+        opacity: 1;
+        transform: rotate(60deg);
+    }
+}
+
+@keyframes msgRightSlideOut {
+    0% {
+        opacity: 1;
+        transform: rotate(60deg);
+    }
+    100% {
+        opacity: 0;
+        transform: rotate(60deg) translate(200px, 0px);
+    }
+}
+
 .gridPiece {
     width: 0;
     height: 0;

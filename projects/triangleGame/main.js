@@ -22,6 +22,11 @@ let vecBackwardSlashDownX = 0.5;
 let vecBackwardSlashDownY = Math.sqrt(3)/2;
 
 
+let msgLeft;
+let msgRight;
+let tryAgainButton;
+
+
 let init = function(){
     //console.log("init");
 
@@ -70,6 +75,7 @@ let init = function(){
         if(moved){
             cleanRecentMerges();
             addNewRandomTile();
+            checkLoss();
         }
     };
 
@@ -118,6 +124,7 @@ let init = function(){
         if(moved){
             cleanRecentMerges();
             addNewRandomTile();
+            checkLoss();
         }
 
         touchDownX = null;
@@ -152,6 +159,115 @@ let init = function(){
 
     
 
+}
+
+let isInBounds = function(row, col){
+    return row >= 0 && row < rowQty && col >= 0 && col < rowLen[row];
+}
+
+let cellCanMerge = function(row, col){
+    let val = tileElements[row][col].getAttribute("tilenum");
+    if(isInBounds(row, col-1) && tileElements[row][col-1].getAttribute("tilenum") == val){
+        return true;
+    }
+    if(isInBounds(row, col+1) && tileElements[row][col+1].getAttribute("tilenum") == val){
+        return true;
+    }
+    if(col%2==0){
+        if(isInBounds(row+1, col+1) && tileElements[row+1][col+1].getAttribute("tilenum") == val){
+            return true;
+        }
+    }else{
+        if(isInBounds(row-1, col-1) && tileElements[row-1][col-1].getAttribute("tilenum") == val){
+            return true;
+        }
+    }
+    return false;
+}
+
+let isLossState = function(){
+    for(let row = 0; row < rowQty; row++){
+        for(let col = 0; col <= row*2; col++){
+            if(tileElements[row][col] == null){
+                return false;
+            }
+        }
+    }
+    for(let row = 0; row < rowQty; row++){
+        for(let col = 0; col <= row*2; col++){
+            if(cellCanMerge(row, col)){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+let resetGame = function(){
+    msgLeft.style.animationName = "";
+    msgRight.style.animationName = "";
+    tryAgainButton.style.opacity = 0;
+    tryAgainButton.style.transitionDuration = "0.5s";
+
+    setTimeout(function(){
+        msgLeft.style.animationName = "msgLeftSlideOut";
+        msgRight.style.animationName = "msgRightSlideOut";
+        msgLeft.style.animationTimingFunction = "ease-in";
+        msgRight.style.animationTimingFunction = "ease-in";
+        msgLeft.style.animationDuration = "0.25s";
+        msgRight.style.animationDuration = "0.25s";
+    }, 1);
+
+    setTimeout(function(){
+        gridContainer.removeChild(msgLeft);
+        gridContainer.removeChild(msgRight);
+    }, 250);
+
+    setTimeout(function(){
+        gridContainer.removeChild(tryAgainButton);
+    }, 500);
+
+    for(let row = 0; row < rowQty; row++){
+        for(let col = 0; col <= row*2; col++){
+            let prev = tileElements[row][col];
+            prev.style.opacity = 0;
+            setTimeout(function(){
+                tileContainer.removeChild(prev);
+            }, 500);
+
+            tileElements[row][col] = null;
+        }
+    }
+
+    addNewRandomTile();
+    addNewRandomTile();
+
+}
+
+let checkLoss = function(){
+    if(isLossState()){
+
+        msgLeft = document.createElement("div")
+        msgLeft.className = "message msgLeft";
+        msgLeft.innerHTML = "<span>GAME</span>";
+        gridContainer.appendChild(msgLeft);
+
+        msgRight = document.createElement("div")
+        msgRight.className = "message msgRight";
+        msgRight.innerHTML = "<span>OVER</span>";
+        gridContainer.appendChild(msgRight);
+
+        tryAgainButton = document.createElement("button");
+        tryAgainButton.className = "tryAgain";
+        tryAgainButton.innerHTML = "TRY AGAIN";
+        tryAgainButton.onclick = resetGame;
+        tryAgainButton.style.opacity = 0;
+        tryAgainButton.style.transitionDuration = "1s";
+        setTimeout(function(){
+            tryAgainButton.style.opacity = 1;
+        }, 1);
+        gridContainer.appendChild(tryAgainButton);
+    }
 }
 
 let cleanRecentMerges = function(){
@@ -316,7 +432,7 @@ let shiftForwardSlash = function(shiftDown){
             let row = rowQty-1;
             let col = y*2;
             let sign = 1;
-            while(Math.ceil(row) >= 0 && Math.ceil(row) < rowQty && col >= 0 && col < rowLen[Math.ceil(row)]){
+            while(isInBounds(Math.ceil(row), col)){
                 if(shiftTileForwardSlash(Math.ceil(row), col, shiftDown)) moved = true;
                 //console.log(Math.ceil(row), col);
                 row -= 0.5;
@@ -327,7 +443,7 @@ let shiftForwardSlash = function(shiftDown){
             let row = y+0.5;
             let col = y*2
             let sign = 1;
-            while(Math.floor(row) >= 0 && Math.floor(row) < rowQty && col >= 0 && col < rowLen[Math.floor(row)]){
+            while(isInBounds(Math.floor(row), col)){
                 if(shiftTileForwardSlash(Math.floor(row), col, shiftDown)) moved = true;
                 //console.log(Math.ceil(row), col);
                 row += 0.5;
@@ -349,7 +465,7 @@ let shiftBackwardSlash = function(shiftDown){
         if(shiftDown){
             let row = rowQty-1;
             let col = y*2;
-            while(Math.ceil(row) >= 0 && Math.ceil(row) < rowQty && col >= 0 && col < rowLen[Math.ceil(row)]){
+            while(isInBounds(Math.ceil(row), col)){
                 if(shiftTileBackwardSlash(Math.ceil(row), col, shiftDown)) moved = true;
                 //console.log(Math.ceil(row), col);
                 row -= 0.5;
@@ -358,7 +474,7 @@ let shiftBackwardSlash = function(shiftDown){
         }else{
             let row = y+0.5;
             let col = 0;
-            while(Math.floor(row) >= 0 && Math.floor(row) < rowQty && col >= 0 && col < rowLen[Math.floor(row)]){
+            while(isInBounds(Math.floor(row), col)){
                 if(shiftTileBackwardSlash(Math.floor(row), col, shiftDown)) moved = true;
                 //console.log(Math.floor(row), col);
                 row += 0.5;
