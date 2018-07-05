@@ -8,6 +8,7 @@ body {
     overflow: hidden;
     overscroll-behavior: contain;
     zoom: 0.8;
+    margin: 8px;
 }
 
 button.tryAgain {

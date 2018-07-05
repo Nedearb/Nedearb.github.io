@@ -232,7 +232,9 @@ let resetGame = function(){
             let prev = tileElements[row][col];
             prev.style.opacity = 0;
             setTimeout(function(){
-                tileContainer.removeChild(prev);
+                try{
+                    tileContainer.removeChild(prev);
+                }catch(e){};
             }, 500);
 
             tileElements[row][col] = null;
@@ -345,7 +347,9 @@ let moveAndMergeTile = function(row, col, dirRow, dirCol){
                 let prev = tileElements[newRow][newCol];
                 prev.style.opacity = 0;
                 setTimeout(function(){
-                    tileContainer.removeChild(prev);
+                    try{
+                        tileContainer.removeChild(prev);
+                    }catch(e){};
                 }, 500);
                 tile.setAttribute("recentMerge", "")
             }else{
