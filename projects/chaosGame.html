@@ -1,0 +1,138 @@
+<html>
+<head>
+    
+</head>
+<body>
+
+    <canvas width="640" height="480" id="mainCanvas"></canvas>
+    <br />
+    <button onclick="startStop();">Start / Stop</button>
+    <button onclick="clearDots();">Clear Dots</button>
+    <button onclick="clearAnchors();">Clear Anchors</button>
+    <br />
+    Jump Fraction: <input onchange="updateVars" id="jumpFraction" type="text" value="0.5">
+    
+    <script type="text/javascript">
+
+        let canvas;
+        let canvasEle;
+        let context
+        let width;
+        let height;
+
+        let interval;
+
+        let running = false;
+
+        let jumpFraction = 0.5;
+
+        let anchors = [];
+        let activePoint = {"x":0, "y":0};
+
+        let ignoreCount = 0;
+        let maxIgnoreCount = 10;
+
+        let clearDots = function(){
+
+            context.fillStyle = "#000000";
+            context.fillRect(0, 0, width, height);
+            
+            updateVars();
+            
+            for(let i = 0; i < anchors.length; i++){
+                context.fillStyle = "#FF0000";
+                context.fillRect(anchors[i].x-2, anchors[i].y-2, 4, 4);
+            }
+
+            ignoreCount = maxIgnoreCount;
+
+        }
+
+        let clearAnchors = function(){
+            for(let i = 0; i < anchors.length; i++){
+                context.fillStyle = "#000000";
+                context.fillRect(anchors[i].x-2, anchors[i].y-2, 4, 4);
+            }
+            anchors = [];
+        }
+
+        let updateVars = function(){
+            jumpFraction = parseFloat(document.getElementById("jumpFraction").value);
+        }
+
+        let drawPoint = function(p){
+            context.fillStyle = "#FFFFFF";
+            context.fillRect(p.x-0.5, p.y-0.5, 1, 1);
+        }
+
+        let startStop = function(){
+            if(running){
+                running = false;
+                clearInterval(interval);
+            }else{
+                running = true;
+                setInterval(tick, 0);
+            }
+        }
+
+        let tick = function(){
+            if(running && anchors.length > 0){
+                let to = anchors[Math.floor(Math.random()*anchors.length)];
+                let dx = (to.x - activePoint.x) * jumpFraction;
+                let dy = (to.y - activePoint.y) * jumpFraction;
+                activePoint.x += dx;
+                activePoint.y += dy;
+                if(ignoreCount > 0){
+                    ignoreCount--;
+                    return;
+                }
+                drawPoint(activePoint);
+            }
+        }
+
+        let dist = function(x1, y1, x2, y2){
+            return Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+        }
+
+        let init = function(){
+
+            canvas = document.getElementById("mainCanvas");
+            context = canvas.getContext("2d");
+            width = canvas.width;
+            height = canvas.height;
+
+            canvas.addEventListener('mousedown', function(e){
+                let x = e.clientX - canvas.offsetLeft; 
+                let y = e.clientY - canvas.offsetTop; 
+                if(e.button == 0){
+                    anchors.push({"x":x, "y":y});
+                    context.fillStyle = "#FF0000";
+                    context.fillRect(x-2, y-2, 4, 4);
+                }else if(e.button == 2){
+                    for(let i = 0; i < anchors.length; i++){
+                        if(dist(anchors[i].x, anchors[i].y, x, y) < 10){
+                            context.fillStyle = "#000000";
+                            context.fillRect(anchors[i].x-2, anchors[i].y-2, 4, 4);
+                            anchors.splice(i, 1);
+                        }
+                    }
+                }
+                e.preventDefault();
+            });
+
+            canvas.addEventListener('contextmenu', function(e) {
+                if (e.button == 2) {
+                    e.preventDefault();
+                }
+            });
+
+            clearDots();
+
+        };
+
+        init();
+
+    </script>
+
+</body>
+</html>
