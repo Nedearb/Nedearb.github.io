@@ -11,6 +11,7 @@
     <button onclick="clearAnchors();">Clear Anchors</button>
     <br />
     Jump Fraction: <input onchange="updateVars" id="jumpFraction" type="text" value="0.5">
+    <button onclick="updateVars();">Update</button>
     
     <script type="text/javascript">
 
@@ -29,15 +30,11 @@
         let anchors = [];
         let activePoint = {"x":0, "y":0};
 
-        let ignoreCount = 0;
-        let maxIgnoreCount = 10;
-
         let clearDots = function(){
+            updateVars();
 
             context.fillStyle = "#000000";
             context.fillRect(0, 0, width, height);
-            
-            updateVars();
             
             for(let i = 0; i < anchors.length; i++){
                 context.fillStyle = "#FF0000";
@@ -49,6 +46,8 @@
         }
 
         let clearAnchors = function(){
+            updateVars();
+
             for(let i = 0; i < anchors.length; i++){
                 context.fillStyle = "#000000";
                 context.fillRect(anchors[i].x-2, anchors[i].y-2, 4, 4);
@@ -66,6 +65,7 @@
         }
 
         let startStop = function(){
+            updateVars();
             if(running){
                 running = false;
                 clearInterval(interval);
@@ -82,10 +82,6 @@
                 let dy = (to.y - activePoint.y) * jumpFraction;
                 activePoint.x += dx;
                 activePoint.y += dy;
-                if(ignoreCount > 0){
-                    ignoreCount--;
-                    return;
-                }
                 drawPoint(activePoint);
             }
         }
