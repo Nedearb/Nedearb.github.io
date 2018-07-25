@@ -1,0 +1,231 @@
+<html>
+
+    <head>
+    </head>
+
+    <body>
+        <canvas width="480" height="480" id="mainCanvas"></canvas>
+        </br>
+        Hilbert Curve ( Degree: <input type="text" id="inputHilbertDegree" size="4" value="3">, Fraction: <input type="text" id="inputHilbertFraction" size="4" value="1.0"> ) <button onclick="drawHilbert()">Draw</button>
+        </br>
+        Fraction Line ( Degree Range: <input type="text" id="inputLineDegreeMin" size="4" value="1"> → <input type="text" id="inputLineDegreeMax" size="4" value="9">, Fraction: <input type="text" id="inputLineFraction" size="4" value="0.2"> ) <button onclick="drawFractionLine()">Draw</button>
+        </br>
+        Fraction Lines ( Degree Range: <input type="text" id="inputLinesDegreeMin" size="4" value="1"> → <input type="text" id="inputLinesDegreeMax" size="4" value="9">, Fraction Interval: <input type="text" id="inputLinesFraction" size="4" value="0.01"> ) <button onclick="drawFractionLines()">Draw</button>
+        
+        
+        <script type="text/javascript">
+        
+            let canvas = document.getElementById("mainCanvas");
+            let context = canvas.getContext("2d");
+
+            let canvasWidth = canvas.width;
+            let canvasHeight = canvas.height;
+            let canavsMin = Math.min(canvasWidth, canvasHeight);
+            
+            let productA = "-BF+AFA+FB-";
+            let productB = "+AF-BFB-FA+"
+
+            let produceNext = function(s){
+                let ns = "";
+                for(let i = 0; i < s.length; i++){
+                    let c = s.charAt(i);
+                    if(c == 'A'){
+                        ns += productA;
+                    }else if(c == 'B'){
+                        ns += productB;
+                    }else{
+                        ns += c;
+                    }
+                }
+                return ns;
+            }
+
+            let rotX = function(r){
+                if(r == 0){
+                    return 1;
+                }else if(r == 2){
+                    return -1;
+                }else{
+                    return 0;
+                }
+            }
+
+            let rotY = function(r){
+                if(r == 1){
+                    return -1;
+                }else if(r == 3){
+                    return 1;
+                }else{
+                    return 0;
+                }
+            }
+
+            let rotR = function(r){
+                if(r == 0){
+                    return 3;
+                }else{
+                    return r-1;
+                }
+            }
+
+            let rotL = function(r){
+                if(r == 3){
+                    return 0;
+                }else{
+                    return r+1;
+                }
+            }
+
+            let drawPath = function(iteration, distFrac, draw){
+                if(distFrac == undefined){
+                    distFrac = 1;
+                }
+                if(draw == undefined){
+                    draw = true;
+                }
+                let turtlePath = "A";
+                for(let i = 0; i < iteration; i++){
+                    turtlePath = produceNext(turtlePath);
+                }
+
+                let speed = canavsMin * (0.5**iteration);
+                let totalDist = 2**(iteration*2)-1
+                let dist = 0;
+
+                let turtleX = speed/2;
+                let turtleY = speed/2;
+                let turtleRot = 3;
+
+                if(draw){
+                    context.fillStyle = "#FFFFFF";
+                    context.fillRect(0, 0, canvasWidth, canvasHeight);
+                    context.strokeStyle = "#000000";
+                    context.beginPath();
+                    context.moveTo(turtleX, turtleY);
+                }
+                for(let i = 0; i < turtlePath.length; i++){
+                    let c = turtlePath.charAt(i);
+                    if(c == 'F'){
+                        if((dist+1) < totalDist*distFrac){
+                            turtleX += rotX(turtleRot)*speed;
+                            turtleY += rotY(turtleRot)*speed;
+                            dist++;
+                        }else{
+                            let part = (totalDist*distFrac - dist)*speed;
+                            turtleX += rotX(turtleRot)*part;
+                            turtleY += rotY(turtleRot)*part;
+                            i = turtlePath.length; // exit loop but still finish it
+                        }
+                    }else if(c == '-'){
+                        turtleRot = rotL(turtleRot);
+                    }else if(c == '+'){
+                        turtleRot = rotR(turtleRot);
+                    }
+                    if(draw){
+                        context.lineTo(turtleX, turtleY);
+                    }
+                }
+                if(draw){
+                    context.stroke();
+                }
+                return {x:turtleX, y:turtleY};
+            }
+
+            let clear = function(){
+                context.fillStyle = "#FFFFFF";
+                context.fillRect(0, 0, canvasWidth, canvasHeight);
+            }
+
+            let drawSpecial = function(minIter, maxIter, distFrac){
+                context.strokeStyle = "#000000";
+                context.beginPath();
+                for(let i = minIter; i < maxIter; i++){
+                    let p = drawPath(i, distFrac, false);
+                    //console.log(p);
+                    if(i == 0){
+                        context.moveTo(p.x, p.y);
+                    }else{
+                        context.lineTo(p.x, p.y);
+                    }
+                }
+                context.stroke();
+            }
+
+            let drawSpecials = function(minIter, maxIter, distFracIter){
+                clear();
+                for(let i = distFracIter; i < 1; i += distFracIter){
+                    drawSpecial(minIter, maxIter, i);
+                }
+            }
+
+            let iter;
+            let iterD;
+            let iterE;
+
+            let gMinIter;
+            let gMaxIter;
+
+            let f = function(){
+                if(iter < iterE){
+                    drawSpecial(gMinIter, gMaxIter, iter);
+                    iter += iterD;
+                    setTimeout(f, 1);
+                }
+            };
+
+            let drawSpecialsSlow = function(minIter, maxIter, distFracStart, distFracEnd, distFracIter){
+                clear();
+
+                iter = distFracStart;
+                iterD = distFracIter;
+                iterE = distFracEnd;
+                gMinIter = minIter;
+                gMaxIter = maxIter;
+                
+                setTimeout(f, 1);
+            };
+            
+            let drawHilbert = function(){
+                let degree = parseInt(document.getElementById("inputHilbertDegree").value);
+                let fraction = parseFloat(document.getElementById("inputHilbertFraction").value);
+                if(degree > 9){
+                    alert("Above 9 is too much.");
+                }else{
+                    drawPath(degree, fraction);
+                }
+            };
+
+            let drawFractionLine = function(){
+                clear();
+                let degreeMin = parseInt(document.getElementById("inputLineDegreeMin").value);
+                let degreeMax = parseInt(document.getElementById("inputLineDegreeMax").value);
+                let fraction = parseFloat(document.getElementById("inputLineFraction").value);
+                if(degreeMin >= degreeMax){
+                    alert("min >= max? Check your limits bro.");
+                }else if(degreeMax > 10){
+                    alert("Above 10 is too much.");
+                }else{
+                    drawSpecial(degreeMin, degreeMax, fraction);
+                }
+            }
+
+            let drawFractionLines = function(){
+                let degreeMin = parseInt(document.getElementById("inputLinesDegreeMin").value);
+                let degreeMax = parseInt(document.getElementById("inputLinesDegreeMax").value);
+                let fraction = parseFloat(document.getElementById("inputLinesFraction").value);
+                if(degreeMin >= degreeMax){
+                    alert("min >= max? Check your limits bro.");
+                }else if(degreeMax > 10){
+                    alert("Above 10 is too much.");
+                }else{
+                    drawSpecialsSlow(degreeMin, degreeMax, 0, 1, fraction);
+                }
+            }
+
+            drawHilbert();
+            
+        
+        </script>
+    </body>
+
+</html>
