@@ -1,0 +1,440 @@
+<html>
+    <head>
+        <style>
+            body{
+                font-family:Arial, Helvetica, sans-serif;
+                font-size: 16px;
+            }
+
+            table {
+                border-collapse: collapse;
+            }
+
+            table, tr td {
+                border: 1px solid black;
+                vertical-align: top;
+            }
+
+            .progBar {
+                background-color: rgb(14, 235, 69);
+            }
+
+        </style>
+        <script type="text/javascript">
+
+            let activeConfig = {};
+            let activeInventory = {};
+
+            let playing = false;
+            let playRate = 1.0;
+            let simDelayMs = 10;
+
+            let totalTime = 0.0;
+
+            let divPriceConfigList;
+            let divInventory;
+            let bInventoryLabel;
+            let textCurrentMoney;
+            let textAvgIncome;
+
+            let canvasMoneyGraph;
+            let ctx;
+
+            let init = function(){
+
+                divPriceConfigList = document.getElementById("priceConfigList");
+                divInventory = document.getElementById("inventory");
+                bInventoryLabel = document.getElementById("inventoryLabel")
+
+                textCurrentMoney = document.getElementById("currentMoney");
+                textAvgIncome = document.getElementById("avgIncome");
+                textTimePassed = document.getElementById("timePassed");
+
+                canvasMoneyGraph = document.getElementById("moneyGraph");
+                ctx = canvasMoneyGraph.getContext("2d");
+
+                checkLogScale = document.getElementById("squishOld");
+
+                activeConfig.maxQty = 10;
+
+                activeConfig.tiers = [];
+                activeConfig.tiers.push(createPrinterTier("Tier 1", 100, 1, 1));
+                activeConfig.tiers.push(createPrinterTier("Tier 2", 500, 10, 8));
+
+                clickedResetSim();
+
+                updateDOMLists();
+
+                beginGameLoop();
+                
+            }
+
+            var beginGameLoop = function(){
+                setTimeout(function () {
+                    updateGame();
+                    beginGameLoop();
+                }, simDelayMs);
+            }
+
+            let createPrinter = function(index){
+                return {
+                    "tierIndex": index,
+                    "timer": 0.0
+                }
+            }
+
+            let createPrinterTier = function(name, price, output, delay){
+                return {
+                    "name": name,
+                    "price": price,
+                    "sellPrice": (price*0.8),
+                    "output": output,
+                    "delay": delay
+                };
+            }
+
+            let updateGame = function(){
+                let gameTime = simDelayMs*0.001*playRate;
+                if(playing){
+                    let oldMoney = activeInventory.money;
+                    totalTime += gameTime;
+                    for(let i = 0; i < activeInventory.printers.length; i++){
+                        let printer = activeInventory.printers[i];
+                        let tier = activeConfig.tiers[printer.tierIndex];
+                        printer.timer += gameTime;
+                        while(printer.timer >= tier.delay){
+                            printer.timer -= tier.delay;
+                            activeInventory.money += tier.output;
+                        }
+                        let percent = Math.floor(printer.timer/tier.delay*100.0) + "%";
+                        if(gameTime >= tier.delay){
+                            printer.elem.style.width = "100%";
+                            printer.elem.innerHTML = gameTime/tier.delay+"/s";
+                        }else{
+                            printer.elem.style.width = percent;
+                            printer.elem.innerHTML = percent;
+                        }
+                        
+                    }
+                    updateDisplays();
+                    if(oldMoney != activeInventory.money){
+                        activeInventory.history.time.push(totalTime);
+                        activeInventory.history.money.push(activeInventory.money);
+                    }
+                    if(activeInventory.money > activeInventory.mostMoneyYet){
+                        activeInventory.mostMoneyYet = activeInventory.money;
+                    }
+                }
+                //drawGraph(); //very ugly
+            }
+
+            
+
+            let drawGraph = function(){
+                let canvasWidth = canvasMoneyGraph.width;
+                let canvasHeight = canvasMoneyGraph.height;
+                let drawXMin = 50;
+                let drawYMin = 5;
+                let drawXMax = canvasWidth - 5;
+                let drawYMax = canvasHeight - 20;
+
+                let maybeLog = function(a){
+                    return checkLogScale.checked?Math.log10(a):a;
+                }
+
+                ctx.fillStyle="white";
+                ctx.strokeStyle="black";
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                ctx.beginPath();
+                ctx.moveTo(drawXMin, drawYMin);
+                ctx.lineTo(drawXMin, drawYMax);
+                ctx.lineTo(drawXMax, drawYMax);
+
+                if(activeInventory.history.time.length > 0){
+                    //let minTime = 0; //using equations assuming this
+                    let maxTime = activeInventory.history.time[activeInventory.history.time.length-1];
+
+                    let maxMoney;
+                    
+                    if(checkLogScale.checked){
+                        maxMoney = Math.ceil(Math.log10(activeInventory.mostMoneyYet));
+                    }else{
+                        maxMoney = Math.pow(10, Math.ceil(Math.log10(activeInventory.mostMoneyYet)));
+                    }
+                    
+                    let xFactor = ((drawXMax - drawXMin) / (maxTime));
+                    let yFactor = ((drawYMax - drawYMin) / (maxMoney));
+
+                    ctx.fillStyle="black";
+                    for(let i = 0; i < 11; i++){
+                        let s;
+                        let y;
+                        if(checkLogScale.checked){
+                            y = (drawYMax-drawYMin)*(1-Math.log10(i)) + drawYMin;
+                            s = formatMoney(Math.pow(10,maxMoney*Math.log10(i)));
+                        }else{
+                            y = (drawYMax-drawYMin)/10*i + drawYMin;
+                            s = formatMoney(maxMoney/10*(10-i));
+                        }
+                        ctx.textAlign = "right";
+                        ctx.fillText(s, drawXMin-10, y+4); 
+                        ctx.moveTo(drawXMin-5, y);
+                        ctx.lineTo(drawXMin, y);
+                        
+                        let x = Math.ceil(activeInventory.history.time.length/10*i);
+                        let lx = activeInventory.history.time[x]*xFactor+drawXMin;
+                        ctx.textAlign = "top";
+                        ctx.fillText(formatTime(activeInventory.history.time[x]), lx, drawYMax+10); 
+                        ctx.moveTo(lx, drawYMax+5);
+                        ctx.lineTo(lx, drawYMax);
+                    }
+                    ctx.stroke();
+
+                    let lx;
+                    let ly;
+                    ctx.strokeStyle="blue";
+                    ctx.beginPath();
+                    lx = activeInventory.history.time[0]*xFactor+drawXMin;
+                    ly = (maxMoney - maybeLog(activeInventory.history.money[0]))*yFactor+drawYMin;
+                    ctx.moveTo(lx, ly);
+                    for(let i = 1; i < (drawXMax-drawXMin); i++){
+                        x = Math.ceil(activeInventory.history.time.length / (drawXMax-drawXMin)) * i;
+                        lx = activeInventory.history.time[x]*xFactor+drawXMin;
+                        ly = (maxMoney - maybeLog(activeInventory.history.money[x]))*yFactor+drawYMin;
+                        ctx.lineTo(lx, ly);
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            let clickedPlaySim = function(){
+                playing = !playing;
+                document.getElementById("playSim").innerHTML = playing?"Pause":"Resume";
+            }
+
+            let clickedResetSim = function(){
+                playing = false;
+                totalTime = 0.0;
+                document.getElementById("playSim").innerHTML = "Play";
+
+                activeInventory.money = 0.0;
+                activeInventory.mostMoneyYet = 0.0;
+                activeInventory.printers = [];
+                activeInventory.printers.push(createPrinter(0));
+
+                activeInventory.history = {"time":[], "money":[]};
+
+                updateDisplays();
+                updateDOMLists();
+            }
+
+            let clickedAddTier = function(){
+                activeConfig.tiers.push(createPrinterTier("Tier "+(activeConfig.tiers.length+1), 100, 1, 1));
+                updateDOMLists();
+            }
+
+            let formatTime = function(t){
+                if(t < 10){
+                    return Math.floor(t*100)/100.0 + "s";
+                }else{
+                    let ss = Math.floor(t);
+                    let s = Math.floor(ss%60);
+                    let m = Math.floor((ss/60)%60);
+                    let h = Math.floor((ss/60/60)%24);
+                    let d = Math.floor((ss/60/60/60));
+                    return (d>0?(d+"d "):"") + (h>0?(h+"h "):"") + (m>0?(m+"m "):"") + (s>0?(s+"s"):"");
+                }
+                
+            }
+
+            let formatMoney = function(m){
+                if(m >= 1000000000000){
+                    return Math.floor(m / 10000000000.0)/100.0+"T";
+                }else if(m >= 1000000000){
+                    return Math.floor(m / 10000000.0)/100.0+"G";
+                }else if(m >= 1000000){
+                    return Math.floor(m / 10000.0)/100.0+"M";
+                }else if(m >= 1000){
+                    return Math.floor(m / 10.0)/100.0+"k";
+                }else{
+                    return Math.floor(m);
+                }
+            }
+
+            let parseMoney = function(s){
+                let n = parseFloat(s.substring(0, s.length-1));
+                let unit = s.substring(s.length-1, s.length);
+                if(unit == "k"){
+                    n *= 1000;
+                }else if(unit == "M"){
+                    n *= 1000000;
+                }else if(unit == "G"){
+                    n *= 1000000000;
+                }else if(unit == "T"){
+                    n *= 1000000000000;
+                }else{
+                    return parseInt(s);
+                }
+                return n;
+            }
+
+            let parseTime = function(s){
+                let ss = s.split(" ");
+                let total = 0.0;
+                for(let i = 0; i < ss.length; i++){
+                    let si = ss[i];
+                    let n = parseFloat(si.substring(0, si.length-1));
+                    let unit = si.substring(si.length-1, si.length);
+                    if(unit == "s"){
+                        total += n*1;
+                    }else if(unit == "m"){
+                        total += n*60;
+                    }else if(unit == "h"){
+                        total += n*60*60;
+                    }else if(unit == "d"){
+                        total += n*60*60*24;
+                    }else{
+                        total += parseInt(si);
+                    }
+                }
+                return total;
+            }
+
+            let updateInputs = function(){
+                playRate = parseInt(document.getElementById("simRate").value);
+            }
+
+            let updateDisplays = function(){
+                textCurrentMoney.value = formatMoney(activeInventory.money);
+                textTimePassed.value = formatTime(totalTime);
+            }
+
+            let updateConfig = function(){
+                for(let i = 0; i < activeConfig.tiers.length; i++){
+                    let tier = activeConfig.tiers[i];
+                    let idPrefix = (tier.name.split(' ').join('_'));
+                    let newName = document.getElementById(idPrefix+"_name").value;
+                    let newPrice = parseMoney(document.getElementById(idPrefix+"_price").value);
+                    let newSellPrice = parseMoney(document.getElementById(idPrefix+"_sellPrice").value);
+                    let newOutput = parseMoney(document.getElementById(idPrefix+"_output").value);
+                    let newDelay = parseTime(document.getElementById(idPrefix+"_delay").value);
+                    tier.name = newName;
+                    tier.price = newPrice;
+                    tier.sellPrice = newSellPrice;
+                    tier.output = newOutput;
+                    tier.delay = newDelay;
+                }
+                updateDOMLists();
+            }
+
+            let updateDOMLists = function(){
+                let avgIncome = 0.0;
+                for(let i = 0; i < activeInventory.printers.length; i++){
+                    let printer = activeInventory.printers[i];
+                    let tier = activeConfig.tiers[printer.tierIndex];
+                    avgIncome += (tier.output*1.0) / tier.delay;
+                }
+
+                textAvgIncome.value = formatMoney(avgIncome);
+
+                divPriceConfigList.innerHTML = "";
+                for(let i = 0; i < activeConfig.tiers.length; i++){
+                    divPriceConfigList.appendChild(createPriceConfigItem(activeConfig.tiers[i], i));
+                }
+
+                divInventory.innerHTML = "";
+                for(let i = 0; i < activeInventory.printers.length; i++){
+                    divInventory.appendChild(createInventoryItem(activeInventory.printers[i], i));
+                    activeInventory.printers[i].elem = document.getElementById("printer_"+i);
+                }
+                bInventoryLabel.innerHTML = "Inventory ("+activeInventory.printers.length+"/"+activeConfig.maxQty+")";
+            }
+
+            let createPriceConfigItem = function(tier, i) {
+                let divEl = document.createElement("div");
+                divEl.style.margin = "6px";
+                divEl.style.border = "1px solid black";
+                let idPrefix = (tier.name.split(' ').join('_'));
+                let nameEl = "<input type=\"text\" value=\""+tier.name+"\" size=\"10\" id=\""+idPrefix+"_name\" onchange=\"updateConfig()\">";
+                let priceEl = "<input type=\"text\" value=\""+formatMoney(tier.price)+"\" size=\"7\" id=\""+idPrefix+"_price\" onchange=\"updateConfig()\">";
+                let sellPriceEl = "<input type=\"text\" value=\""+formatMoney(tier.sellPrice)+"\" size=\"7\" id=\""+idPrefix+"_sellPrice\" onchange=\"updateConfig()\">";
+                let outputEl = "<input type=\"text\" value=\""+formatMoney(tier.output)+"\" size=\"7\" id=\""+idPrefix+"_output\" onchange=\"updateConfig()\">";
+                let delayEl = "<input type=\"text\" value=\""+formatTime(tier.delay)+"\" size=\"7\" id=\""+idPrefix+"_delay\" onchange=\"updateConfig()\">";
+                let buyButton = "<button onclick=\"buyPrinter("+i+")\">Buy</button>"
+                divEl.innerHTML = nameEl+" $"+outputEl+"/"+delayEl+""+"<br />"+buyButton+": $"+priceEl+"Sell: $"+sellPriceEl;
+                return divEl;
+            }
+
+            let createInventoryItem = function(printer, i){
+                let divEl = document.createElement("div");
+                divEl.style.margin = "6px";
+                divEl.style.border = "1px solid black";
+                let tier = activeConfig.tiers[printer.tierIndex];
+                let sellEl = "<button onclick=\"sellPrinter("+i+")\">Sell</button>";
+                let prog = "<div class=\"progBar\" id=\"printer_"+i+"\" value=\""+printer.timer+"\">";
+                divEl.innerHTML = ""+tier.name+"(+$"+formatMoney(tier.output)+")"+sellEl+prog;
+                return divEl;
+            }
+
+            let buyPrinter = function(index){
+                if(activeInventory.money >= activeConfig.tiers[index].price && activeInventory.printers.length < activeConfig.maxQty){
+                    activeInventory.money -= activeConfig.tiers[index].price;
+                    activeInventory.printers.push(createPrinter(index));
+                    updateDOMLists();
+                }
+            }
+
+            let sellPrinter = function(index){
+                activeInventory.money += activeConfig.tiers[activeInventory.printers[index].tierIndex].sellPrice;
+                activeInventory.printers.splice(index, 1);
+                updateDOMLists();
+            }
+
+        </script>
+    </head>
+    <body onload="init()">
+        <table>
+            <tr>
+                <td rowspan="3">
+                    <b>Shop</b><br />
+                    <!-- <button id="savePriceConfig">Save</button><button id="loadPriceConfig">Load</button><br /> -->
+                    <div id="priceConfigList"><br />
+
+                    </div>
+                    <button id="addTier" onclick="clickedAddTier()"> + </button>
+                </td>
+                <td>
+                    <b>Simulate</b> <button id="playSim" onclick="clickedPlaySim()"> Play</button><br />
+                    Simulation Rate: <input onchange="updateInputs()" id="simRate" type="text" value="1" size="7">s/s<br />
+                    Time Passed: <input id="timePassed" type="text" value="0s" size="11" readonly="readonly">
+                    <button id="resetSim" onclick="clickedResetSim()"> Reset</button>
+                    <button id="saveState">Save State</button>
+                    <button id="loadState">Load State</button><br />
+                </td>
+                <td rowspan="3">
+                    <b id="inventoryLabel">Inventory</b><br />
+                    <div id="inventory">
+
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <b>Game</b><br />
+                    Current Money: $<input id="currentMoney" type="text" value="0" readonly="readonly" size="15"><br />
+                    Average income: +$<input id="avgIncome" type="text" value="0" readonly="readonly" size="15"> /s<br />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="1">
+                    <canvas width="500" height="300" id="moneyGraph">
+                        no canvas :(
+                    </canvas>
+                    <br />
+                    <!-- Log Scale<input type="checkbox" id="squishOld"> -->
+                </td>
+            </tr>
+        </table>
+
+    </body>
+</html>
