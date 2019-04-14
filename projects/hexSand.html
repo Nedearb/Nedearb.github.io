@@ -1,0 +1,162 @@
+<html>
+    <head>
+        <script type="text/javascript">
+        
+            let canvas;
+            let context;
+
+            let hexSize = 5;
+            let drawRadius = 5;
+            let hexHeight = Math.sqrt(3) * hexSize;
+
+            let width;
+            let height;
+            let hexYCount;
+            let hexXCount;
+
+            let grid;
+            let lastGrid;
+
+            let init = function(){
+                canvas = document.getElementById("mainCanvas");
+                context = canvas.getContext("2d");
+
+                canvas.width = window.innerWidth-20;
+                canvas.height = window.innerHeight-100;
+
+                canvas.width = Math.min(canvas.width, canvas.height);
+                canvas.height = canvas.width;
+
+                resetGrid();
+
+                grid[Math.floor(hexYCount/2)][Math.floor(hexXCount/2)] = 1000;
+
+                drawHexDots();
+
+                setInterval(step, 1);
+
+
+            }
+
+            let step = function(){
+                for(let y = 0; y < hexYCount; y++){
+                    for(let x = 0; x < hexXCount; x++){
+                        if(lastGrid[y][x] >= 6){
+                            grid[y][x] -= 6;
+                            knockAround(y, x, function(yy, xx){
+                                grid[yy][xx] += 1;
+                            });
+                        }
+                    }
+                }
+                for(let y = 0; y < hexYCount; y++){
+                    for(let x = 0; x < hexXCount; x++){
+                        lastGrid[y][x] = grid[y][x];
+                    }
+                }
+                drawHexDots();
+            }
+
+            let resetGrid = function(){
+                width = canvas.width;
+                height = canvas.height;
+                hexYCount = Math.floor(height/(hexHeight/2))-1;
+                hexXCount = Math.floor(width/(3*hexSize));
+
+                grid = [];
+                lastGrid = [];
+
+                for(let y = 0; y < hexYCount; y++){
+                    grid.push([]);
+                    lastGrid.push([]);
+                    for(let x = 0; x < hexXCount; x++){
+                        grid[y].push(0);
+                        lastGrid[y].push(0);
+                    }
+                }
+
+
+
+            }
+
+            let getColor = function(level){
+                switch(level){
+                    case 0:{ return "#FFFFFF"; }
+                    case 1:{ return "#FFFF00"; }
+                    case 2:{ return "#FF0000"; }
+                    case 3:{ return "#FF00FF"; }
+                    case 4:{ return "#0000FF"; }
+                    case 5:{ return "#00FF00"; }
+                    default: { return "#000000"; }
+                }
+            }
+
+            let knockAround = function(y, x, func){
+                let neis = [];
+                let nx = y%2==0?x-1:x+1;
+                if(y > 0){
+                    func(y-1, x);//neis.push({'y': y-1, 'x': x});
+                    if(nx >= 0 && nx < hexXCount){
+                        func(y-1, nx);//neis.push({'y': y-1, 'x': nx});
+                    }
+                }
+                if(y < hexYCount-1){
+                    func(y+1, x);//neis.push({'y': y+1, 'x': x});
+                    if(nx >= 0 && nx < hexXCount){
+                        func(y+1, nx);//neis.push({'y': y+1, 'x': nx});
+                    }
+                }
+                if(y > 1){
+                    func(y-2, x);
+                }
+                if(y < hexYCount-2){
+                    func(y+2, x);
+                }
+                return neis;
+            }
+            
+            let drawHexDots = function(){
+
+                let xOff = false;
+                let xStart = hexSize;
+                let yStart = hexHeight/2;
+
+                for(let y = 0; y < hexYCount; y++){
+                    for(let x = 0; x < hexXCount; x++){
+                        context.fillStyle = getColor(grid[y][x]);
+                        context.beginPath();
+                        context.arc(xStart+(x*3*hexSize)+(xOff?hexSize*1.5:0), yStart+y*(hexHeight/2), drawRadius, 0, 2*Math.PI);
+                        context.fill();
+                        //context.stroke();
+                    }
+                    xOff = !xOff;
+                }
+
+            }
+
+            let clearGrid = function(){
+                resetGrid();
+            }
+
+            let putSand = function(){
+                let amount = parseInt(document.getElementById("putAmount").value);
+                putSandAmount(amount);
+            }
+
+            let putSandAmount = function(amount){
+                grid[Math.floor(hexYCount/2)][Math.floor(hexXCount/2)] += amount;
+            }
+
+        
+        </script>
+    </head>
+
+    <body onload="init()">
+        <canvas id="mainCanvas" width=640 height=480>No canvas :(</canvas>
+        <br/>
+        <button onclick="clearGrid()">Clear</button>
+        <button onclick="putSand()">put</button>
+        <input type="text" value="100" id="putAmount">
+    </body>
+
+</html>
