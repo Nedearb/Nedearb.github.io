@@ -72,6 +72,26 @@
 
         }
 
+        let calcAreaOnly = function(divisions, baseRadius, pointHeight, offset){
+            let a;
+            let c = radius(0, divisions, offset, baseRadius, pointHeight);
+            let b = (2*Math.PI*baseRadius)/divisions
+            let phi = 0;
+            let area = 0;
+            let lastPhi = 0;
+            for(let i = 0; i < divisions; i++){
+                a = c;
+                c = radius(i+1, divisions, offset, baseRadius, pointHeight);
+                let x = a*Math.cos(phi);
+                let y = a*Math.sin(phi);
+                lastPhi = phi;
+                phi += Math.acos((a**2-b**2+c**2)/(2*a*c));
+                let p = (a+b+c)/2;
+                area += Math.sqrt(p*(p-a)*(p-b)*(p-c));
+            }
+            return area;
+        }
+
         $(function() {
 
             canvas = $("#mainCanvas");
