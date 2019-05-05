@@ -51,21 +51,7 @@
             let canvasMoneyGraph;
             let ctx;
 
-            let init = function(){
-
-                divPriceConfigList = document.getElementById("priceConfigList");
-                divInventory = document.getElementById("inventory");
-                bInventoryLabel = document.getElementById("inventoryLabel")
-
-                textCurrentMoney = document.getElementById("currentMoney");
-                textAvgIncome = document.getElementById("avgIncome");
-                textTimePassed = document.getElementById("timePassed");
-
-                stratBoxInit = document.getElementById("stratBoxInit");
-                stratBoxLoop = document.getElementById("stratBoxLoop");
-                stratBoxError = document.getElementById("stratBoxError");
-                stratBoxLoopEnabled = document.getElementById("stratBoxLoopEnabled");
-
+            let resetConfigAndStrats = function(){
                 stratBoxInit.value = "strat.targetPrinter = 0;";
                 stratBoxLoop.value = `if(activeInventory.printers.length<10){
     buyPrinter(strat.targetPrinter);
@@ -91,26 +77,43 @@
 }
 console.log(strat.targetPrinter)
 `;
+                activeConfig = {};
+                activeConfig.maxQty = 10;
 
+                activeConfig.tiers = [];
+                activeConfig.tiers.push(createPrinterTier("Tier 1", 100, 1, 1));
+                activeConfig.tiers.push(createPrinterTier("Tier 2", 500, 10, 8));
+            }
+
+            let init = function(){
+
+                divPriceConfigList = document.getElementById("priceConfigList");
+                divInventory = document.getElementById("inventory");
+                bInventoryLabel = document.getElementById("inventoryLabel")
+
+                textCurrentMoney = document.getElementById("currentMoney");
+                textAvgIncome = document.getElementById("avgIncome");
+                textTimePassed = document.getElementById("timePassed");
+
+                stratBoxInit = document.getElementById("stratBoxInit");
+                stratBoxLoop = document.getElementById("stratBoxLoop");
+                stratBoxError = document.getElementById("stratBoxError");
+                stratBoxLoopEnabled = document.getElementById("stratBoxLoopEnabled");
+                
+                resetConfigAndStrats();
 
                 stratBoxInit.value = window.localStorage.getItem("stratBoxInit");
                 stratBoxLoop.value = window.localStorage.getItem("stratBoxLoop");
 
-                activeConfig = JSON.parse(window.localStorage.getItem("activeConfig"));
+                newConfig = JSON.parse(window.localStorage.getItem("activeConfig"));
+                if(newConfig != null){
+                    activeConfig = newConfig;
+                }
 
                 //canvasMoneyGraph = document.getElementById("moneyGraph");
                 //ctx = canvasMoneyGraph.getContext("2d");
 
                 //checkLogScale = document.getElementById("squishOld");
-
-                if(activeConfig == null){
-                    activeConfig = {};
-                    activeConfig.maxQty = 10;
-
-                    activeConfig.tiers = [];
-                    activeConfig.tiers.push(createPrinterTier("Tier 1", 100, 1, 1));
-                    activeConfig.tiers.push(createPrinterTier("Tier 2", 500, 10, 8));
-                }
 
                 clickedResetSim();
 
@@ -490,6 +493,13 @@ console.log(strat.targetPrinter)
                 window.localStorage.setItem("stratBoxLoop", stratBoxLoop.value);
             }
 
+            let hardReset = function(){
+                resetConfigAndStrats();
+                saveConfig();
+                stratChanged();
+                init();
+            }
+
         </script>
     </head>
     <body onload="init()">
@@ -540,6 +550,7 @@ console.log(strat.targetPrinter)
                 </td>
             </tr>
         </table>
+        <button onclick="hardReset()">HARD RESET</button>
 
     </body>
 </html>
