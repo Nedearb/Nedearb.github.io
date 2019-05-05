@@ -15,12 +15,19 @@
                 vertical-align: top;
             }
 
+            textarea {
+                font-family: Courier, monospace;
+                font-size: 12px;
+            }
+
             .progBar {
                 background-color: rgb(14, 235, 69);
             }
 
         </style>
         <script type="text/javascript">
+
+            let strat = {};
 
             let activeConfig = {};
             let activeInventory = {};
@@ -37,6 +44,10 @@
             let textCurrentMoney;
             let textAvgIncome;
 
+            let stratBoxInit;
+            let stratBoxLoop;
+            let stratBoxLoopEnabled;
+
             let canvasMoneyGraph;
             let ctx;
 
@@ -50,16 +61,56 @@
                 textAvgIncome = document.getElementById("avgIncome");
                 textTimePassed = document.getElementById("timePassed");
 
-                canvasMoneyGraph = document.getElementById("moneyGraph");
-                ctx = canvasMoneyGraph.getContext("2d");
+                stratBoxInit = document.getElementById("stratBoxInit");
+                stratBoxLoop = document.getElementById("stratBoxLoop");
+                stratBoxError = document.getElementById("stratBoxError");
+                stratBoxLoopEnabled = document.getElementById("stratBoxLoopEnabled");
 
-                checkLogScale = document.getElementById("squishOld");
+                stratBoxInit.value = "strat.targetPrinter = 0;";
+                stratBoxLoop.value = `if(activeInventory.printers.length<10){
+    buyPrinter(strat.targetPrinter);
+}else if(activeInventory.printers.length==10){
+    if(canBuyPrinter(strat.targetPrinter)){
 
-                activeConfig.maxQty = 10;
+        let allSame = true;
+        let sameIndex = activeInventory.printers[0].tierIndex;
+        for(let i = 1; i < activeInventory.printers.length; i++){
+            if(activeInventory.printers[i].tierIndex != sameIndex){
+                allSame = false;
+            }
+        }
+        if(allSame){
+            strat.targetPrinter = sameIndex+1;
+        }
+    }
 
-                activeConfig.tiers = [];
-                activeConfig.tiers.push(createPrinterTier("Tier 1", 100, 1, 1));
-                activeConfig.tiers.push(createPrinterTier("Tier 2", 500, 10, 8));
+    if(canBuyPrinter(strat.targetPrinter)){
+        let sellIndex = getLowestPrinter("price");
+        sellPrinter(sellIndex);
+    }
+}
+console.log(strat.targetPrinter)
+`;
+
+
+                stratBoxInit.value = window.localStorage.getItem("stratBoxInit");
+                stratBoxLoop.value = window.localStorage.getItem("stratBoxLoop");
+
+                activeConfig = JSON.parse(window.localStorage.getItem("activeConfig"));
+
+                //canvasMoneyGraph = document.getElementById("moneyGraph");
+                //ctx = canvasMoneyGraph.getContext("2d");
+
+                //checkLogScale = document.getElementById("squishOld");
+
+                if(activeConfig == null){
+                    activeConfig = {};
+                    activeConfig.maxQty = 10;
+
+                    activeConfig.tiers = [];
+                    activeConfig.tiers.push(createPrinterTier("Tier 1", 100, 1, 1));
+                    activeConfig.tiers.push(createPrinterTier("Tier 2", 500, 10, 8));
+                }
 
                 clickedResetSim();
 
@@ -123,6 +174,16 @@
                     }
                     if(activeInventory.money > activeInventory.mostMoneyYet){
                         activeInventory.mostMoneyYet = activeInventory.money;
+                    }
+                    if(stratBoxLoopEnabled.checked){
+                        try{
+                            eval(stratBoxLoop.value);
+                            stratBoxError.style.display = "none";
+                            stratBoxError.value = "";
+                        }catch(e){
+                            stratBoxError.style.display = "block";
+                            stratBoxError.value = e;
+                        }
                     }
                 }
                 //drawGraph(); //very ugly
@@ -230,6 +291,7 @@
 
             let clickedAddTier = function(){
                 activeConfig.tiers.push(createPrinterTier("Tier "+(activeConfig.tiers.length+1), 100, 1, 1));
+                saveConfig();
                 updateDOMLists();
             }
 
@@ -309,6 +371,11 @@
                 textTimePassed.value = formatTime(totalTime);
             }
 
+            let saveConfig = function(){
+                window.localStorage.setItem("activeConfig", JSON.stringify(activeConfig));
+                
+            }
+
             let updateConfig = function(){
                 for(let i = 0; i < activeConfig.tiers.length; i++){
                     let tier = activeConfig.tiers[i];
@@ -324,6 +391,7 @@
                     tier.output = newOutput;
                     tier.delay = newDelay;
                 }
+                saveConfig();
                 updateDOMLists();
             }
 
@@ -376,8 +444,12 @@
                 return divEl;
             }
 
+            let canBuyPrinter = function(index){
+                return (activeInventory.money >= activeConfig.tiers[index].price);
+            }
+
             let buyPrinter = function(index){
-                if(activeInventory.money >= activeConfig.tiers[index].price && activeInventory.printers.length < activeConfig.maxQty){
+                if(canBuyPrinter(index) && activeInventory.printers.length < activeConfig.maxQty){
                     activeInventory.money -= activeConfig.tiers[index].price;
                     activeInventory.printers.push(createPrinter(index));
                     updateDOMLists();
@@ -388,6 +460,34 @@
                 activeInventory.money += activeConfig.tiers[activeInventory.printers[index].tierIndex].sellPrice;
                 activeInventory.printers.splice(index, 1);
                 updateDOMLists();
+            }
+
+            let getLowestPrinter = function(by){
+                let lowest = 0;
+                for(let i = 1; i < activeInventory.printers.length; i++){
+                    if(activeConfig.tiers[activeInventory.printers[i].tierIndex][by] < activeConfig.tiers[activeInventory.printers[lowest].tierIndex][by]){
+                        lowest = i;
+                    }
+                }
+                return lowest;
+            }
+
+            let runStratInit = function(){
+                try{
+                    eval(stratBoxInit.value);
+                    stratBoxInit.style.backgroundColor = "";
+                    stratBoxError.style.display = "none";
+                    stratBoxError.value = "";
+                }catch(e){
+                    stratBoxInit.style.backgroundColor = "#FFD0D0";
+                    stratBoxError.style.display = "block";
+                    stratBoxError.value = e;
+                }
+            }
+
+            let stratChanged = function(){
+                window.localStorage.setItem("stratBoxInit", stratBoxInit.value);
+                window.localStorage.setItem("stratBoxLoop", stratBoxLoop.value);
             }
 
         </script>
@@ -427,10 +527,15 @@
             </tr>
             <tr>
                 <td colspan="1">
-                    <canvas width="500" height="300" id="moneyGraph">
+                    <b>Stategy Inital</b> <button onclick="runStratInit()">Run Strat Inital</button><br />
+                    <textarea id="stratBoxInit" style="width:30em; height:5em;" onchange="stratChanged()"></textarea><br />
+                    <b>Strategy Loop</b> <input type="checkbox" id="stratBoxLoopEnabled"><br />
+                    <textarea id="stratBoxLoop" style="width:30em; height:15em;" onchange="stratChanged()"></textarea><br />
+                    <textarea id="stratBoxError"  style="width:30em; height:5em; display:none; background-color:#FFD0D0;"></textarea>
+                    <!--<canvas width="500" height="300" id="moneyGraph">
                         no canvas :(
                     </canvas>
-                    <br />
+                    <br /> -->
                     <!-- Log Scale<input type="checkbox" id="squishOld"> -->
                 </td>
             </tr>
