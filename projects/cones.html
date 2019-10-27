@@ -12,8 +12,8 @@
         let cx;
         let cy;
 
-        let radius = function(t, g, o, r, h){
-            let theta = t*2*Math.PI/g;
+        let radius = function(t, g, o, r, h, phase){
+            let theta = t*2*Math.PI/g+phase;
             return Math.sqrt((o-r*Math.cos(theta))**2 + (r*Math.sin(theta))**2 + (h**2));
         }
 
@@ -33,6 +33,7 @@
             let scale = parseFloat($("#paramScale").val());
             let drawInner = $("#checkDrawInner").is(":checked");
             let drawBase = $("#checkDrawBase").is(":checked");
+            let phase = parseFloat($("#paramPhase").val())*Math.PI/180.0;
 
             context.strokeStyle = "#000000";
             context.beginPath();
@@ -40,14 +41,14 @@
             context.lineTo(scale, 10);
             context.moveTo(cx, cy);
             let a;
-            let c = radius(0, divisions, offset, baseRadius, pointHeight);
+            let c = radius(0, divisions, offset, baseRadius, pointHeight, phase);
             let b = (2*Math.PI*baseRadius)/divisions
             let phi = 0;
             let area = 0;
             let lastPhi = 0;
             for(let i = 0; i < divisions; i++){
                 a = c;
-                c = radius(i+1, divisions, offset, baseRadius, pointHeight);
+                c = radius(i+1, divisions, offset, baseRadius, pointHeight, phase);
                 let x = a*Math.cos(phi);
                 let y = a*Math.sin(phi);
                 //points.push({"x":x, "y":y});
@@ -74,14 +75,14 @@
 
         let calcAreaOnly = function(divisions, baseRadius, pointHeight, offset){
             let a;
-            let c = radius(0, divisions, offset, baseRadius, pointHeight);
+            let c = radius(0, divisions, offset, baseRadius, pointHeight, phase);
             let b = (2*Math.PI*baseRadius)/divisions
             let phi = 0;
             let area = 0;
             let lastPhi = 0;
             for(let i = 0; i < divisions; i++){
                 a = c;
-                c = radius(i+1, divisions, offset, baseRadius, pointHeight);
+                c = radius(i+1, divisions, offset, baseRadius, pointHeight, phase);
                 let x = a*Math.cos(phi);
                 let y = a*Math.sin(phi);
                 lastPhi = phi;
@@ -140,6 +141,8 @@
     Offset <input onchange="redraw()" id="paramOffset" type="text" value="4">
     <br />
     Scale <input onchange="redraw()" id="paramScale" type="text" value="20">
+    <br />
+    Phase <input onchange="redraw()" id="paramPhase" type="text" value="90">
     <br />
     Draw inner lines <input onchange="redraw()" id="checkDrawInner" type="checkbox">
     <br />
