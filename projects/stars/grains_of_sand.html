@@ -1,0 +1,256 @@
+<html>
+    <head>
+        <style>
+            body {
+                background-color: black;
+            }
+        </style>
+        <script>
+
+            // https://css-tricks.com/converting-color-spaces-in-javascript/
+            function HSLToHex(h,s,l) {
+                s /= 100;
+                l /= 100;
+
+                let c = (1 - Math.abs(2 * l - 1)) * s,
+                    x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+                    m = l - c/2,
+                    r = 0,
+                    g = 0,
+                    b = 0;
+
+                if (0 <= h && h < 60) {
+                    r = c; g = x; b = 0;
+                } else if (60 <= h && h < 120) {
+                    r = x; g = c; b = 0;
+                } else if (120 <= h && h < 180) {
+                    r = 0; g = c; b = x;
+                } else if (180 <= h && h < 240) {
+                    r = 0; g = x; b = c;
+                } else if (240 <= h && h < 300) {
+                    r = x; g = 0; b = c;
+                } else if (300 <= h && h < 360) {
+                    r = c; g = 0; b = x;
+                }
+                // Having obtained RGB, convert channels to hex
+                r = Math.round((r + m) * 255).toString(16);
+                g = Math.round((g + m) * 255).toString(16);
+                b = Math.round((b + m) * 255).toString(16);
+
+                // Prepend 0s, if necessary
+                if (r.length == 1)
+                    r = "0" + r;
+                if (g.length == 1)
+                    g = "0" + g;
+                if (b.length == 1)
+                    b = "0" + b;
+
+                return "#" + r + g + b;
+            }
+
+            var canvas;
+            var context;
+            var width;
+            var height;
+            var canvasLeft;
+            var canvasTop;
+
+            var mouseX = 0;
+            var mouseY = 0;
+
+            var mainInterval;
+
+            var stars = [];
+
+            var fullSpectrum = [];
+
+            let makeStar = function(x, y) {
+                return {
+                    "x": x,
+                    "y": y,
+                    "color": "white"
+                };
+            }
+
+            let near = function(a, b, nearEpsilon) {
+                return Math.abs(a - b) <= nearEpsilon;
+            }
+
+            let square = function(x) {
+                return x*x;
+            }
+
+            let identity = function(x) {
+                return x;
+            }
+
+            let sigmoid = function(x) {
+                return 2.0 / (1 + Math.exp(-x)) - 1.0;
+            }
+
+            let makeSpectrum = function() {
+                let colors = [];
+                // dark red to red
+                for(let i = 20; i <= 50; i++){
+                    colors.push(HSLToHex(0, 100, i));
+                }
+                // red to white
+                for(let i = 50; i <= 100; i++){
+                    colors.push(HSLToHex(i-50, 100, i));
+                }
+                // white to light blue
+                for(let i = 100; i >= 80; i--){
+                    colors.push(HSLToHex(240, 100, i));
+                }
+                return colors;
+            }
+
+            let spectrumColor = function(velocity) {
+                let fraction = sigmoid(Math.abs(velocity*10));
+                let index = Math.floor(fullSpectrum.length * fraction);
+                return fullSpectrum[index];
+            }
+
+            // Move Functions
+
+            // dist funcs
+
+            let inverseSquare = function(dist2) {
+                return (1.0 / (dist2+0.1)) * 10000;
+            }
+            
+            let well = function(dist2) {
+                return -inverseSquare(dist2);
+            }
+
+            let dampedHarmonicOscillator = function(dist2) {
+                let dist = Math.sqrt(dist2);
+                return inverseSquare(dist2) * (Math.sin(20*dist) + 0.1)
+            }
+
+            let constant = function(dist2) {
+                return 1;
+            }
+
+            // dir funcs
+
+            let turn90 = function(dir) {
+                return dir + (Math.PI * 0.5);
+            }
+
+            let turnUnder90 = function(dir) {
+                return dir + (Math.PI * 0.45);
+            }
+
+            let turnOver90 = function(dir) {
+                return dir + (Math.PI * 0.55);
+            }
+
+            let turnDist = function(dir, dist2) {
+                return dir + (dist2/1000);
+            }
+
+            let turnDist2 = function(dir, dist2) {
+                return dir + ((dist2)/5000);
+            }
+
+            var moveFunctionIndex = 0;
+            var moveFunctions = [
+                [inverseSquare, identity], 
+                [well, identity],
+                [dampedHarmonicOscillator, identity],
+                [well, turn90],
+                [well, turnUnder90],
+                [well, turnOver90],
+                [dampedHarmonicOscillator, turn90],
+                [inverseSquare, turnDist],
+                [inverseSquare, turnDist2],
+                [constant, turnDist2],
+            ];
+
+            //
+
+            let init = function() {
+                canvas = document.getElementById("mainCanvas");
+                context = canvas.getContext("2d");
+                width = canvas.width;
+                height = canvas.height;
+                canvasLeft = canvas.offsetLeft + canvas.clientLeft;
+                canvasTop = canvas.offsetTop + canvas.clientTop;
+
+                window.addEventListener('mousemove', mouseMoved, false);
+                canvas.addEventListener('click', () => {
+                    moveFunctionIndex++;
+                    if(moveFunctionIndex >= moveFunctions.length){
+                        moveFunctionIndex = 0;
+                    }
+                }, false);
+
+                let starCount = (width * height) / 100;
+                for(let i = 0; i < starCount; i ++){
+                    stars.push(makeStar(Math.random()*width, Math.random()*height));
+                }
+
+                fullSpectrum = makeSpectrum();
+
+                draw();
+
+                mainInterval = setInterval(() => {
+                    update();
+                    draw();
+                }, 10);
+            }
+
+            let draw = function() {
+                context.fillStyle = "black";
+
+                context.fillRect(0, 0, width, height);
+
+                context.fillStyle = "white";
+                stars.forEach(function(star){
+                    // context.fillStyle = star.color;
+                    context.fillRect(Math.floor(star.x)-0.5, Math.floor(star.y)-0.5, 3, 3);
+                })
+            }
+
+            let mouseMoved = function(event) {
+                mouseX = event.pageX - canvasLeft;
+                mouseY = event.pageY - canvasTop;
+            }
+
+            let update = function() {
+
+                // let nearEpsilon = 500;
+
+                stars.forEach(function(star){
+
+                    // if(near(mouseX, star.x, nearEpsilon) && near(mouseY, star.y, nearEpsilon)) {
+                        
+                        let dir = Math.atan2(star.y - mouseY, star.x - mouseX)
+                        let dist2 = Math.max(square(star.y - mouseY) + square(star.x - mouseX), 1);
+
+                        let moveDist = moveFunctions[moveFunctionIndex][0](dist2, dir);
+                        let moveDir = moveFunctions[moveFunctionIndex][1](dir, dist2);
+
+                        let difx = moveDist * Math.cos(moveDir);
+                        let dify = moveDist * Math.sin(moveDir);
+                        star.x += difx;
+                        star.y += dify;
+                        // star.color = spectrumColor(Math.sqrt(square(difx) + square(dify)))
+
+                        if(star.x > width || star.x < 0 || star.y > height || star.y < 0){
+                            star.x = Math.random()*width;
+                            star.y = Math.random()*height;
+                            // star.color = "black";
+                        }
+                    // }
+                });
+            }
+
+        </script>
+    </head>
+    <body onload="init()">
+        <canvas id="mainCanvas" width="640" height="640"></canvas>
+    </body>
+
+</html>
