@@ -1,0 +1,219 @@
+<html>
+    <head>
+        <script>
+            "use strict"
+
+            const gridSize = 16;
+            const Colors = ["#e74c3c", "#3498db", "#2ecc71", "#f1c40f", "#9b59b6", "#34495e"];
+            const sideLeft = 0;
+            const sideRight = 1;
+            const sideTop = 2;
+            const sideBottom = 3;
+            const sideInvalid = null;
+
+            var canvas;
+            var context;
+            var width;
+            var height;
+
+            let interval;
+
+            let gridHeight;
+            let gridWidth;
+
+            let grid = [];
+            var boxes = [];
+
+            let getGridAt = function(x, y){
+                if(x >= gridWidth || x < 0){
+                    return undefined;
+                }
+                if(y >= gridHeight || y < 0){
+                    return undefined;
+                }
+                return grid[y*gridWidth + x];
+            }
+
+            let setGridAt = function(x, y, obj){
+                grid[y*gridWidth + x] = obj;
+            }
+
+            let getSideAt = function(x, y, side) {
+                let box = getGridAt(x, y);
+                if (box) {
+                    return box.sides[side];
+                } else {
+                    return sideInvalid;
+                }
+            }
+            
+            let matchOrNull = function(a, b){
+                return a == null || b == null || a == b;
+            }
+
+            class Box {
+                constructor(x, y, sides) {
+                    this.exists = this.move(x, y);
+                    this.sides = sides;
+                    this.markForDeath = false;
+                    if(this.exists){
+                        boxes.push(this);
+                    }
+                }
+                
+                move(newX, newY) {
+                    if(getGridAt(newX, newY) === null){
+                        setGridAt(newX, newY, this);
+                        setGridAt(this.x, this.y, null);
+                        this.x = newX;
+                        this.y = newY;
+                        return true;
+                    }else{
+                        return false;
+                    }
+                }
+
+                moveRelative(dx, dy) {
+                    return this.move(this.x + dx, this.y + dy);
+                }
+
+                isMatchingAnyNear() {
+                    return getSideAt(this.x-1, this.y, sideRight) == this.sides[sideLeft] ||
+                        getSideAt(this.x+1, this.y, sideLeft) == this.sides[sideRight] ||
+                        getSideAt(this.x, this.y-1, sideBottom) == this.sides[sideTop] ||
+                        getSideAt(this.x, this.y+1, sideTop) == this.sides[sideBottom];
+                }
+
+                isMatchingAllNear() {
+                    return matchOrNull(getSideAt(this.x-1, this.y, sideRight), this.sides[sideLeft]) &&
+                        matchOrNull(getSideAt(this.x+1, this.y, sideLeft), this.sides[sideRight]) &&
+                        matchOrNull(getSideAt(this.x, this.y-1, sideBottom), this.sides[sideTop]) &&
+                        matchOrNull(getSideAt(this.x, this.y+1, sideTop), this.sides[sideBottom]);
+                }
+
+                kill(){
+                    setGridAt(this.x, this.y, null);
+                    const index = boxes.indexOf(this);
+                    if(index >= 0){
+                        boxes.splice(index, 1);
+                    }
+                }
+            }
+
+            let randInt = function(x){
+                return Math.floor(Math.random() * Math.floor(x))
+            }
+
+            let dropNewBox = function(newX){
+                if(newX == undefined){
+                    newX = randInt(width / gridSize);
+                }
+                let newY = 0;//randInt(height / gridSize);
+                let newSdes = [
+                    randInt(Colors.length), 
+                    randInt(Colors.length), 
+                    randInt(Colors.length), 
+                    randInt(Colors.length)
+                ];
+                if (getGridAt(newX, newY+1) === null) {
+                    let newBox = new Box(newX, newY, newSdes);
+                    return newBox;
+                } else {
+                    return null
+                }
+            }
+
+            let init = function(){
+                canvas = document.getElementById("mainCanvas");
+                context = canvas.getContext("2d");
+                width = canvas.width;
+                height = canvas.height;
+                gridHeight = Math.floor(height / gridSize);
+                gridWidth = Math.floor(width / gridSize);
+
+                for(let y = 0; y < gridHeight; y++){
+                    for(let x = 0; x < gridWidth; x++){
+                        setGridAt(x, y, null);
+                    }
+                }
+
+                interval = setInterval(update, 1000/60);
+            }
+
+            let update = function(){
+
+                for(let i = 0; i < gridWidth; i++){
+                    let newBox = dropNewBox(i);
+                }
+                
+                // context.fillStyle = "black";
+                // context.fillRect(0, 0, width, height);
+
+                for(let i = 0; i < boxes.length; i++){
+                    let box = boxes[i];
+                    if(getGridAt(box.x, box.y+1) === null){
+                        let x = box.x * gridSize;
+                        let y = box.y * gridSize;
+
+                        context.beginPath();
+                        context.moveTo(x, y);
+                        context.lineTo(x+gridSize/2, y+gridSize/2);
+                        context.lineTo(x, y+gridSize);
+                        context.closePath();
+                        context.fillStyle = Colors[box.sides[sideLeft]];
+                        context.fill();
+                        // context.stroke();
+
+                        context.beginPath();
+                        context.moveTo(x+gridSize, y+gridSize);
+                        context.lineTo(x+gridSize/2, y+gridSize/2);
+                        context.lineTo(x+gridSize, y);
+                        context.closePath();
+                        context.fillStyle = Colors[box.sides[sideRight]];
+                        context.fill();
+                        // context.stroke();
+
+                        context.beginPath();
+                        context.moveTo(x, y);
+                        context.lineTo(x+gridSize/2, y+gridSize/2);
+                        context.lineTo(x+gridSize, y);
+                        context.closePath();
+                        context.fillStyle = Colors[box.sides[sideTop]];
+                        context.fill();
+                        // context.stroke();
+
+                        context.beginPath();
+                        context.moveTo(x+gridSize, y+gridSize);
+                        context.lineTo(x+gridSize/2, y+gridSize/2);
+                        context.lineTo(x, y+gridSize);
+                        context.closePath();
+                        context.fillStyle = Colors[box.sides[sideBottom]];
+                        context.fill();
+                        // context.stroke();
+
+                        box.moveRelative(0, 1);
+                        if(getGridAt(box.x, box.y+1) !== null){
+                            if(!box.isMatchingAllNear()){
+                                box.markForDeath = true;
+                            }
+                        }
+                    }
+
+                }
+
+                for(let i = 0; i < boxes.length; i++){
+                    let box = boxes[i];
+                    if(box.markForDeath){
+                        box.kill();
+                        i--;
+                    }
+                }
+            }
+
+        </script>
+    </head>
+    <body onload="init()" style="background-color: black;">
+        <canvas id="mainCanvas" width="640" height="640"></canvas>
+    </body>
+
+</html>
