@@ -2,10 +2,74 @@
     <head>
         <style>
             body {
+                font-family: sans-serif;
                 background-color: black;
+                color: white;
+            }
+
+            input {
+                background-color: black;
+                color: white;
+                border: 1px;
+                border-radius: 4px;
+                border-style: solid;
+                border-color: white;
+                margin: 3px;
+            }
+
+            #mainCanvas {
+                display: inline-block;
+            }
+
+            #settings {
+                display: inline-block;
             }
         </style>
         <script>
+
+            const SETTING_CHECKBOX = "checkbox";
+            const SETTING_NUMBER = "number";
+
+            let settingsInfo = {
+                followCursor: {
+                    name: "Follow Cursor",
+                    type: SETTING_CHECKBOX,
+                },
+                speed: {
+                    name: "Speed",
+                    type: SETTING_NUMBER,
+                },
+                attraction: {
+                    name: "Attraction",
+                    type: SETTING_NUMBER,
+                },
+                vibrate: {
+                    name: "Harmonic Strength",
+                    type: SETTING_NUMBER,
+                },
+                vibratePeriod: {
+                    name: "Harmonic Period",
+                    type: SETTING_NUMBER,
+                },
+                turn: {
+                    name: "Turn",
+                    type: SETTING_NUMBER,
+                },
+                distTurn: {
+                    name: "Distance Turn",
+                    type: SETTING_NUMBER,
+                }
+            }
+
+            let settings = {
+                followCursor: false,
+                speed: 1.0,
+                attraction: 10.0,
+                vibrate: 0.0,
+                vibratePeriod: 20.0,
+                turn: 0.0,
+                distTurn: 0,
+            }
 
             // https://css-tricks.com/converting-color-spaces-in-javascript/
             function HSLToHex(h,s,l) {
@@ -111,64 +175,76 @@
                 return fullSpectrum[index];
             }
 
-            // Move Functions
-
-            // dist funcs
-
-            let inverseSquare = function(dist2) {
-                return (1.0 / (dist2+0.1)) * 10000;
-            }
-            
-            let well = function(dist2) {
-                return -inverseSquare(dist2);
+            let loadSettings = function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlSettings = urlParams.get('settings');
+                if(urlSettings){
+                    const settingsJSON = atob(urlSettings);
+                    settings = JSON.parse(settingsJSON);
+                    console.log("Loaded settings");
+                }
             }
 
-            let dampedHarmonicOscillator = function(dist2) {
-                let dist = Math.sqrt(dist2);
-                return inverseSquare(dist2) * (Math.sin(20*dist) + 0.1)
+            let saveSettings = function() {
+                const settingsJSON = JSON.stringify(settings);
+                const urlSettings = btoa(settingsJSON);
+                const url = new URL(window.location);
+                url.searchParams.set('settings', urlSettings);
+                history.pushState({}, "", url)
             }
 
-            let constant = function(dist2) {
-                return 1;
+            let settingsUpdated = function() {
+                saveSettings();
             }
 
-            // dir funcs
+            let putSettings = function() {
+                let settingsDiv = document.getElementById("settings");
+                settingsDiv.innerHTML = "";
+                for(let key in settingsInfo){
+                    let setting = settingsInfo[key];
+                    let node = document.createElement("div");
 
-            let turn90 = function(dir) {
-                return dir + (Math.PI * 0.5);
+                    let label = document.createElement("span");
+                        label.innerHTML = setting.name;
+
+                    if (setting.type === SETTING_CHECKBOX) {
+                        let checkbox = document.createElement("input");
+                        checkbox.setAttribute("type", "checkbox");
+
+                        let id = "setting-" + key;
+                        checkbox.id = id;
+
+                        checkbox.checked = settings[key];
+
+                        checkbox.onclick = () => {
+                            settings[key] = checkbox.checked;
+                            settingsUpdated();
+                        }
+
+                        node.appendChild(checkbox);
+                        node.appendChild(label);
+
+                    } else if(setting.type === SETTING_NUMBER) {
+                        let input = document.createElement("input");
+                        input.setAttribute("type", "text");
+
+                        let id = "setting-" + key;
+                        input.id = id;
+
+                        input.value = settings[key];
+
+                        input.onchange = () => {
+                            settings[key] = input.value;
+                            settingsUpdated();
+                        }
+
+                        node.appendChild(input);
+                        node.appendChild(label);
+                    }
+
+                    settingsDiv.appendChild(node);
+                }
             }
-
-            let turnUnder90 = function(dir) {
-                return dir + (Math.PI * 0.45);
-            }
-
-            let turnOver90 = function(dir) {
-                return dir + (Math.PI * 0.55);
-            }
-
-            let turnDist = function(dir, dist2) {
-                return dir + (dist2/1000);
-            }
-
-            let turnDist2 = function(dir, dist2) {
-                return dir + ((dist2)/5000);
-            }
-
-            var moveFunctionIndex = 0;
-            var moveFunctions = [
-                [inverseSquare, identity], 
-                [well, identity],
-                [dampedHarmonicOscillator, identity],
-                [well, turn90],
-                [well, turnUnder90],
-                [well, turnOver90],
-                [dampedHarmonicOscillator, turn90],
-                [inverseSquare, turnDist],
-                [inverseSquare, turnDist2],
-                [constant, turnDist2],
-            ];
-
-            //
 
             let init = function() {
                 canvas = document.getElementById("mainCanvas");
@@ -178,13 +254,17 @@
                 canvasLeft = canvas.offsetLeft + canvas.clientLeft;
                 canvasTop = canvas.offsetTop + canvas.clientTop;
 
+                mouseX = width / 2;
+                mouseY = height / 2;
+
+
+                loadSettings();
+                saveSettings();
+
+                putSettings();
+
                 window.addEventListener('mousemove', mouseMoved, false);
-                canvas.addEventListener('click', () => {
-                    moveFunctionIndex++;
-                    if(moveFunctionIndex >= moveFunctions.length){
-                        moveFunctionIndex = 0;
-                    }
-                }, false);
+                canvas.addEventListener('click', mouseClicked, false);
 
                 let starCount = (width * height) / 100;
                 for(let i = 0; i < starCount; i ++){
@@ -214,6 +294,13 @@
             }
 
             let mouseMoved = function(event) {
+                if(settings.followCursor){
+                    mouseX = event.pageX - canvasLeft;
+                    mouseY = event.pageY - canvasTop;
+                }
+            }
+
+            let mouseClicked = function(event) {
                 mouseX = event.pageX - canvasLeft;
                 mouseY = event.pageY - canvasTop;
             }
@@ -228,9 +315,18 @@
                         
                         let dir = Math.atan2(star.y - mouseY, star.x - mouseX)
                         let dist2 = Math.max(square(star.y - mouseY) + square(star.x - mouseX), 1);
+                        let dist = Math.sqrt(dist2);
 
-                        let moveDist = moveFunctions[moveFunctionIndex][0](dist2, dir);
-                        let moveDir = moveFunctions[moveFunctionIndex][1](dir, dist2);
+                        let moveDist = (settings.speed) * (
+                              (settings.attraction * 1000 * -(1.0 / (dist2+0.1)))
+                            + (settings.vibratePeriod != 0 ? 
+                                (settings.vibrate * (Math.sin(2*Math.PI/settings.vibratePeriod * dist)+0.1)) : 0)
+                        );
+
+                        let moveDir = dir
+                            + (2 * Math.PI / 360 * settings.turn)
+                            + (settings.distTurn != 0 ?
+                                (dist2/(100 * settings.distTurn)) : 0);
 
                         let difx = moveDist * Math.cos(moveDir);
                         let dify = moveDist * Math.sin(moveDir);
@@ -251,6 +347,7 @@
     </head>
     <body onload="init()">
         <canvas id="mainCanvas" width="640" height="640"></canvas>
+        <div id="settings"></div>
     </body>
 
 </html>
