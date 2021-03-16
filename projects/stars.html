@@ -61,15 +61,19 @@
                 }
             }
 
-            let settings = {
+            let defaultSettings = {
+                mouseX: 320,
+                mouseY: 320,
                 followCursor: false,
                 speed: 1.0,
                 attraction: 10.0,
                 vibrate: 0.0,
                 vibratePeriod: 20.0,
                 turn: 0.0,
-                distTurn: 0,
+                distTurn: 0.0,
             }
+
+            let settings = defaultSettings;
 
             // https://css-tricks.com/converting-color-spaces-in-javascript/
             function HSLToHex(h,s,l) {
@@ -118,9 +122,6 @@
             var height;
             var canvasLeft;
             var canvasTop;
-
-            var mouseX = 0;
-            var mouseY = 0;
 
             var mainInterval;
 
@@ -181,6 +182,13 @@
                 if(urlSettings){
                     const settingsJSON = atob(urlSettings);
                     settings = JSON.parse(settingsJSON);
+
+                    for(key in defaultSettings) {
+                        if(settings[key] === undefined){
+                            settings[key] = defaultSettings[key];
+                        }
+                    }
+
                     console.log("Loaded settings");
                 }
             }
@@ -254,10 +262,6 @@
                 canvasLeft = canvas.offsetLeft + canvas.clientLeft;
                 canvasTop = canvas.offsetTop + canvas.clientTop;
 
-                mouseX = width / 2;
-                mouseY = height / 2;
-
-
                 loadSettings();
                 saveSettings();
 
@@ -295,14 +299,16 @@
 
             let mouseMoved = function(event) {
                 if(settings.followCursor){
-                    mouseX = event.pageX - canvasLeft;
-                    mouseY = event.pageY - canvasTop;
+                    settings.mouseX = event.pageX - canvasLeft;
+                    settings.mouseY = event.pageY - canvasTop;
+                    settingsUpdated();
                 }
             }
 
             let mouseClicked = function(event) {
-                mouseX = event.pageX - canvasLeft;
-                mouseY = event.pageY - canvasTop;
+                settings.mouseX = event.pageX - canvasLeft;
+                settings.mouseY = event.pageY - canvasTop;
+                settingsUpdated();
             }
 
             let update = function() {
@@ -313,8 +319,8 @@
 
                     // if(near(mouseX, star.x, nearEpsilon) && near(mouseY, star.y, nearEpsilon)) {
                         
-                        let dir = Math.atan2(star.y - mouseY, star.x - mouseX)
-                        let dist2 = Math.max(square(star.y - mouseY) + square(star.x - mouseX), 1);
+                        let dir = Math.atan2(star.y - settings.mouseY, star.x - settings.mouseX)
+                        let dist2 = Math.max(square(star.y - settings.mouseY) + square(star.x - settings.mouseX), 1);
                         let dist = Math.sqrt(dist2);
 
                         let moveDist = (settings.speed) * (
