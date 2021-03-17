@@ -8,7 +8,7 @@
                 color: white;
             }
 
-            input {
+            input, button {
                 background-color: black;
                 color: white;
                 border: 1px;
@@ -16,6 +16,10 @@
                 border-style: solid;
                 border-color: white;
                 margin: 3px;
+            }
+
+            button:hover {
+                background-color: #2355b1;
             }
 
             #mainCanvas {
@@ -177,6 +181,19 @@
                 return fullSpectrum[index];
             }
 
+            let resetStars = function() {
+                stars = [];
+                let starCount = (width * height) / 100;
+                for(let i = 0; i < starCount; i ++){
+                    stars.push(makeStar(Math.random()*width, Math.random()*height));
+                }
+            }
+
+            let resetSettings = function() {
+                settings = defaultSettings;
+                settingsUpdated();
+            }
+
             let loadSettings = function() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const urlSettings = urlParams.get('settings');
@@ -271,10 +288,7 @@
                 window.addEventListener('mousemove', mouseMoved, false);
                 canvas.addEventListener('click', mouseClicked, false);
 
-                let starCount = (width * height) / 100;
-                for(let i = 0; i < starCount; i ++){
-                    stars.push(makeStar(Math.random()*width, Math.random()*height));
-                }
+                resetStars();
 
                 fullSpectrum = makeSpectrum();
 
@@ -355,6 +369,9 @@
     <body onload="init()">
         <canvas id="mainCanvas" width="640" height="640"></canvas>
         <div id="settings"></div>
+        <br />
+        <button onclick="resetStars();">reset stars</button>
+        <button onclick="resetSettings();">reset settings</button>
     </body>
 
 </html>
