@@ -1,0 +1,63 @@
+<html>
+    <head>
+        <style>
+            body {
+                background-color: black;
+                color: white;
+                font-family: monospace;
+                font-size: 18px;
+            }
+            .game {
+                padding: 32px;
+                text-align: center;
+                margin: auto;
+                display: block;
+            }
+            input {
+                background-color: black;
+                border: 0px;
+                color: white;
+                font-family: monospace;
+                font-size: 18px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="game">
+            <canvas id="c" width="512" height="512"></canvas>
+            <br />
+            <br />
+            <span>f(x,y,t) =></span>
+            <input id="f" type="text" value="(x^y^t)%5" size=34>
+        </div>
+        <script>
+
+            const context = c.getContext('2d');
+
+            let t = 0;
+            let w = 256;
+            let lastValue = "";
+
+            let update = () => {
+                context.fillStyle = "white";
+                context.fillRect(0, 0, w*2, w*2);
+                context.fillStyle = "black";
+                if(lastValue != f.value){
+                    t = 0;
+                    lastValue = f.value;
+                }
+                const formula = new Function("x", "y", "t", "w", "return " + f.value);
+                for (let x = 0; x < w; x++) {
+                    for (let y = 0; y < w; y++) {
+                        if (formula(x, y, t, w)) {
+                            context.fillRect(x*2, y*2, 2, 2);
+                        }
+                    }
+                }
+                t++;
+            }
+
+            setInterval(update, 100);
+        </script>
+    </body>
+</html>

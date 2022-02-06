@@ -1,0 +1,370 @@
+<html>
+    <head>
+        <script>
+
+            var canvas;
+            var context;
+            var width;
+            var height;
+
+            var canvasLeft;
+            var canvasTop;
+
+            var conveyorBeltW;
+            var conveyorBeltH;
+            var conveyorBeltX;
+            var conveyorBeltY;
+            
+
+            const PART_HEAD = "HEAD";
+            const PART_TORSO = "TORSO";
+            const PART_ARM = "ARM";
+            const PART_LEG = "LEG";
+
+            const partTypes = [PART_HEAD, PART_TORSO, PART_ARM, PART_ARM, PART_LEG, PART_LEG];
+
+            const partSizes = {
+                [PART_HEAD]: {w: 32, h: 32},
+                [PART_TORSO]: {w: 48, h: 64},
+                [PART_ARM]: {w: 64, h: 16},
+                [PART_LEG]: {w: 16, h: 64},
+            };
+
+            const traitsByType = {
+                [PART_HEAD]: ["intelegence", "wisdom", "charisma", "je ne sais quoi"],
+                [PART_TORSO]: ["strength", "constitution", "charisma", "je ne sais quoi"],
+                [PART_ARM]: ["strength", "dexterity", "je ne sais quoi"],
+                [PART_LEG]: ["strength", "dexterity", "je ne sais quoi"],
+            };
+
+            const traitScales = {
+                "intelegence": 1.0,
+                "wisdom": 1.0,
+                "constitution": 1.0,
+                "charisma": 2.0,
+                "strength": 3.0,
+                "dexterity": 2.0,
+                "je ne sais quoi": 4.0
+            }
+
+            const deltaTime = 1.0/60.0;
+
+            const parts = {};
+
+            const slots = {};
+
+            let mouseX = 0;
+            let mouseY = 0;
+            let mouseIsDown = false;
+
+            let nextId = 0;
+
+            let draggingPart = undefined;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            let conveyorBeltSpeed = 2;
+
+            let newPartTimer = 0;
+
+            let removingFullBody = false;
+
+            const getNextId = function() {
+                return "id-" + (nextId++);
+            }
+
+            const makeRandomTraits = function(type) {
+                const possibleTraits = traitsByType[type];
+                const traits = {};
+                for (let i = 0; i < possibleTraits.length; i++) {
+                    const amount = Math.random()*2.0;
+                    if (amount > 1.0) {
+                        traits[possibleTraits[i]] = amount - 1.0;
+                    }
+                }
+                return traits;
+            }
+
+            const makePart = function(type, x, y, color, traits) {
+                return {
+                    type,
+                    x,
+                    y,
+                    color,
+                    traits,
+                    ...partSizes[type],
+                    placed: false
+                }
+            }
+
+            const makeSlot = function(type, x, y) {
+                return {
+                    type,
+                    x,
+                    y,
+                    ...partSizes[type],
+                    partId: undefined
+                }
+            }
+
+            const makeRandomPartColor = function() {
+                return "hsl(0,0%," + Math.floor(Math.random()*80+20) + "%)";
+            }
+
+            const drawTraits = function(traits, x, y, goUp, drawOrdinary) {
+                const traitNames = Object.keys(traits);
+                const len = traitNames.length;
+                const h = 16;
+                const w = 32;
+                if (goUp) {
+                    y -= len * h;
+                }
+                context.font = "16px san-serif";
+                context.textAlign = "end";
+                context.textBaseline = "top";
+                for (let i = 0; i < len; i++) {
+                    const traitName = traitNames[i];
+                    const trait = traits[traitName];
+
+                    context.beginPath();
+                    context.strokeStyle = "white";
+                    context.rect(x, y, w, h-4);
+                    context.stroke();
+
+                    context.beginPath();
+                    context.fillStyle = "white";
+                    context.rect(x, y, w*trait, h-4);
+                    context.fill();
+
+                    context.fillStyle = "white";
+                    context.fillText(traitName, x-4, y);
+
+                    y += h;
+                }
+                if (goUp) {
+                    y -= h;
+                }
+                context.textAlign = "center";
+                if (Object.keys(traits).length === 0 && drawOrdinary) {
+                    context.fillStyle = "white";
+                    context.fillText("ordinary", x-4, y);
+                }
+            }
+
+            const update = function() {
+                // drag bg
+                context.beginPath();
+                context.fillStyle = "black";
+                context.rect(0, 0, width, height);
+                context.fill();
+
+                // draw conveyor belt
+                context.beginPath();
+                context.strokeStyle = "white";
+                context.rect(conveyorBeltX, conveyorBeltY, conveyorBeltW, conveyorBeltH);
+                context.stroke();
+
+                let allTraits = {};
+
+                // draw and update slots
+                let fullBody = true;
+                const slotIds = Object.keys(slots);
+                for (let i = 0; i < slotIds.length; i++) {
+                    const id = slotIds[i];
+                    const slot = slots[id];
+                    context.beginPath();
+                    context.strokeStyle = "white";
+                    context.rect(slot.x-slot.w/2, slot.y-slot.h/2, slot.w, slot.h);
+                    context.stroke();
+
+                    if (slot.partId === undefined) {
+                        fullBody = false;
+                    } else {
+                        const part = parts[slot.partId];
+                        const traits = part.traits;
+                        const traitIds = Object.keys(traits);
+                        for (let j = 0; j < traitIds.length; j++) {
+                            const traitId = traitIds[j];
+                            allTraits[traitId] = (allTraits[traitId]??0) + traits[traitId];
+                        }
+                    }
+                }
+
+                const allTraitsIds = Object.keys(allTraits);
+                for (let i = 0; i < allTraitsIds.length; i++) {
+                    const traitId = allTraitsIds[i];
+                    allTraits[traitId] /= traitScales[traitId];
+                }
+
+
+
+                // draw and update parts
+                const partIds = Object.keys(parts);
+                for (let i = 0; i < partIds.length; i++) {
+                    const partId = partIds[i];
+                    const part = parts[partId];
+                    context.beginPath();
+                    context.fillStyle = part.color;
+                    context.rect(part.x-part.w/2, part.y-part.h/2, part.w, part.h);
+                    context.fill();
+
+                    if (!part.placed && partId !== draggingPart) {
+                        // move on conveyor
+                        if (onConveyor(part)) {
+                            part.x += conveyorBeltSpeed;
+                        }
+
+                        // check for placement in slot
+                        for (let j = 0; j < slotIds.length; j++) {
+                            const slotId = slotIds[j];
+                            const slot = slots[slotId];
+                            if (slot.partId === undefined && slot.type === part.type) {
+                                if (onSlot(part, slot)) {
+                                    part.placed = true;
+                                    slot.partId = partId;
+                                    part.x = slot.x;
+                                    part.y = slot.y;
+                                }
+                            }
+                        }
+                    }
+
+                    if (part.x > width + part.w) {
+                        delete parts[partId];
+                    }
+                }
+
+                // draw traits for part
+                const hoverPartId = getPartAt(mouseX, mouseY, false);
+                if (hoverPartId !== undefined) {
+                    const part = parts[hoverPartId];
+                    drawTraits(part.traits, part.x, part.y-part.h/2, true, true);
+                }
+
+                drawTraits(allTraits, width / 4, height / 8, false, false);
+
+                // remove full body
+                if (fullBody && !removingFullBody) {
+                    removingFullBody = true;
+                    setTimeout(() => {
+                        const slotIds = Object.keys(slots);
+                        for (let i = 0; i < slotIds.length; i++) {
+                            const id = slotIds[i];
+                            const slot = slots[id];
+
+                            delete parts[slot.partId];
+                            slot.partId = undefined;
+                        }
+                        removingFullBody = false;
+                    }, 1000);
+                }
+
+                // create new parts
+                newPartTimer -= deltaTime;
+
+                if (newPartTimer <= 0) {
+                    const type = partTypes[Math.floor(Math.random()*partTypes.length)];
+                    const x = -partSizes[type].w/2;
+                    const y = conveyorBeltY + conveyorBeltH - Math.random()*(conveyorBeltH*0.9) - partSizes[type].h/2;
+                    const color = makeRandomPartColor();
+                    const traits = makeRandomTraits(type);
+                    parts[getNextId()] = makePart(type, x, y, color, traits);
+                    newPartTimer = Math.random()*1.0 + 0.5;
+                }
+            }
+
+            const getPartAt = function(x, y, free) {
+                const partIds = Object.keys(parts);
+                for (let i = 0; i < partIds.length; i++) {
+                    const id = partIds[i];
+                    const part = parts[id];
+                    if (!part.placed || !free) {
+                        if (insideRect(x, y, part.x-part.w/2, part.y-part.h/2,  part.x+part.w/2, part.y+part.h/2)) {
+                            return id;
+                        }
+                    }
+                }
+                return undefined;
+            }
+
+            const insideRect = function(x, y, minX, minY, maxX, maxY) {
+                return x > minX && y > minY && x < maxX && y < maxY;
+            }
+
+            const AABB = function(aminX, aminY, amaxX, amaxY, bminX, bminY, bmaxX, bmaxY) {
+                return (aminX <= bmaxX && amaxX >= bminX) &&
+                       (aminY <= bmaxY && amaxY >= bminY);
+            }
+
+            const onConveyor = function(part) {
+                return AABB(part.x-part.w/2, part.y-part.h/2, part.x+part.w/2, part.y+part.h/2,
+                            conveyorBeltX, conveyorBeltY, conveyorBeltX+conveyorBeltW, conveyorBeltY+conveyorBeltH);
+            }
+
+            const onSlot = function(part, slot) {
+                return AABB(part.x-part.w/2, part.y-part.h/2, part.x+part.w/2, part.y+part.h/2,
+                            slot.x-slot.w/2, slot.y-slot.h/2, slot.x+slot.w/2, slot.y+slot.h/2);
+            }
+
+            const mouseMoved = function(event) {
+                mouseX = event.pageX - canvasLeft;
+                mouseY = event.pageY - canvasTop;
+                if (draggingPart !== undefined) {
+                    parts[draggingPart].x = mouseX + dragOffsetX;
+                    parts[draggingPart].y = mouseY + dragOffsetY;
+                }
+            }
+
+            const mouseDown = function(event) {
+                mouseX = event.pageX - canvasLeft;
+                mouseY = event.pageY - canvasTop;
+                mouseIsDown = true;
+                draggingPart = getPartAt(mouseX, mouseY, true);
+                if (draggingPart !== undefined) {
+                    dragOffsetX = parts[draggingPart].x - mouseX;
+                    dragOffsetY = parts[draggingPart].y - mouseY;
+                }
+            }
+
+            const mouseUp = function(event) {
+                mouseX = event.pageX - canvasLeft;
+                mouseY = event.pageY - canvasTop;
+                mouseIsDown = false;
+                draggingPart = undefined;
+            }
+
+            const init = function(){
+                canvas = document.getElementById("mainCanvas");
+                context = canvas.getContext("2d");
+                width = canvas.width;
+                height = canvas.height;
+
+                canvasLeft = canvas.offsetLeft + canvas.clientLeft;
+                canvasTop = canvas.offsetTop + canvas.clientTop;
+
+                conveyorBeltW = width+128;
+                conveyorBeltH = 64;
+                conveyorBeltX = -64;
+                conveyorBeltY = height - conveyorBeltH;
+
+                canvas.addEventListener('mousemove', mouseMoved, false);
+                canvas.addEventListener('mousedown', mouseDown, false);
+                canvas.addEventListener('mouseup', mouseUp, false);
+
+                slots[getNextId()] = makeSlot(PART_HEAD, width/2, height/8+8);
+                slots[getNextId()] = makeSlot(PART_ARM, width/2-64, height/8+40);
+                slots[getNextId()] = makeSlot(PART_ARM, width/2+64, height/8+40);
+                slots[getNextId()] = makeSlot(PART_TORSO, width/2, height/8+64);
+                slots[getNextId()] = makeSlot(PART_LEG, width/2-16, height/8+136);
+                slots[getNextId()] = makeSlot(PART_LEG, width/2+16, height/8+136);
+
+                setInterval(update, 1000*deltaTime);
+            }
+
+        </script>
+    </head>
+    <body onload="init()">
+        <canvas id="mainCanvas" width="640" height="480"></canvas>
+    </body>
+
+</html>
