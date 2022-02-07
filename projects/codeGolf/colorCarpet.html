@@ -28,7 +28,7 @@
             <br />
             <br />
             <span>f(x,y,t,w) =></span>
-            <input id="f" type="text" value="(x^y^t)%5" size=34>
+            <input id="f" type="text" value="(x^y^t)/w" size=34>
         </div>
         <script>
 
@@ -39,10 +39,25 @@
             let s = 2;
             let lastValue = "";
 
+            // https://stackoverflow.com/questions/36721830/convert-hsl-to-rgb-and-hex
+            function hslToHex(h, s, l) { // h: 0-360, s&l: 0-1
+                const a = s * Math.min(l, 1 - l);
+                const f = n => {
+                    const k = (n + h / 30) % 12;
+                    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                    return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+                };
+                return `#${f(0)}${f(8)}${f(4)}`;
+            }
+
+            function mod(n, m) {
+                return ((n % m) + m) % m;
+            }
+
             let update = () => {
-                context.fillStyle = "white";
-                context.fillRect(0, 0, w*2, w*2);
                 context.fillStyle = "black";
+                context.fillRect(0, 0, w*s, w*s);
+
                 if(lastValue != f.value){
                     t = 0;
                     lastValue = f.value;
@@ -50,9 +65,9 @@
                 const formula = new Function("x", "y", "t", "w", "return " + f.value);
                 for (let x = 0; x < w; x++) {
                     for (let y = 0; y < w; y++) {
-                        if (formula(x, y, t, w)) {
-                            context.fillRect(x*s, y*s, s, s);
-                        }
+                        const value = formula(x, y, t, w);
+                        context.fillStyle = hslToHex(mod(value*360, 360), 1, 0.5);
+                        context.fillRect(x*s, y*s, s, s);
                     }
                 }
                 t++;
