@@ -44,8 +44,12 @@
                     name: "Speed",
                     type: SETTING_NUMBER,
                 },
-                attraction: {
-                    name: "Attraction",
+                attractionR2: {
+                    name: "Attraction R2",
+                    type: SETTING_NUMBER,
+                },
+                attractionUniform: {
+                    name: "Attraction Uniform",
                     type: SETTING_NUMBER,
                 },
                 vibrate: {
@@ -71,7 +75,8 @@
                 mouseY: 320,
                 followCursor: false,
                 speed: 1.0,
-                attraction: 10.0,
+                attractionR2: 10.0,
+                attractionUniform: 0.0,
                 vibrate: 0.0,
                 vibratePeriod: 20.0,
                 turn: 0.0,
@@ -339,7 +344,8 @@
                         let dist = Math.sqrt(dist2);
 
                         let moveDist = (settings.speed) * (
-                              (settings.attraction * 1000 * -(1.0 / (dist2+0.1)))
+                              (settings.attractionR2 * 1000 * -(1.0 / (dist2+0.1)))
+                            + (-settings.attractionUniform)
                             + (settings.vibratePeriod != 0 ? 
                                 (settings.vibrate * (Math.sin(2*Math.PI/settings.vibratePeriod * dist)+0.1)) : 0)
                         );
