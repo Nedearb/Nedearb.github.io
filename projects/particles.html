@@ -53,7 +53,7 @@
         <p>
             Inspired by YouTube video <a href="https://www.youtube.com/watch?v=4vk7YvBYpOs">Digital Genius - Simulating Particle Life</a>.
             <br/>
-            Thanks to <a href="https://codelabs.developers.google.com/your-first-webgpu-app#0">Google Colabs WebGPU Tutorial</a> for learning how to use WebGPU.
+            Thanks to <a href="https://codelabs.developers.google.com/your-first-webgpu-app#0">Google Colabs WebGPU Tutorial</a> for teaching me how to use WebGPU.
         </p>
         <script type="module">
             
@@ -115,7 +115,7 @@
                 return matrix;
             }
 
-            function makeDynamicControlMatrix(name, widthGetter, heightGetter, valueGetter, min, max) {
+            function makeDynamicControlMatrix(name, widthGetter, heightGetter, valueGetter, min, max, allSetValue) {
                 let width = widthGetter();
                 let height = heightGetter();
                 return {
@@ -126,6 +126,7 @@
                     valueGetter: valueGetter,
                     min: min,
                     max: max,
+                    allSetValue: allSetValue,
 
                     width: width,
                     height: height,
@@ -137,7 +138,7 @@
                 let newValue = Number(textBox.value.replace(/[^0-9\.-]/gim,""));
                 if (isNaN(newValue) || isNaN(textBox.value)) {
                     textBox.setAttribute("class", "error");
-                    return;
+                    return control.value;
                 }
                 textBox.setAttribute("class", "pending");
                 if (newValue < control.min) {
@@ -173,22 +174,66 @@
                 }
             }
 
+            function randomizeMatrix(control, key) {
+                control.matrix = makeMatrix(control.width, control.height, control.valueGetter);
+                for (let y = 0; y < control.height; y++) {
+                    for (let x = 0; x < control.width; x++) {
+                        let textBox = document.getElementById("control-"+key+"-"+x+"-"+y);
+                        textBox.value = control.matrix[x][y];
+                        control.matrix[x][y] = validate(textBox, control);
+                        textBox.value = control.matrix[x][y];
+                    }
+                }
+            }
+
+            function restartSimulation() {
+                for (const [key, control] of Object.entries(controls)) {
+                    isRunning = false;
+
+                    if (control.type == "number") {
+                        let textBox = document.getElementById("control-"+key);
+                        textBox.value = control.value;
+                        textBox.setAttribute("class", "");
+                    } else if (control.type == "dynamic matrix") {
+                        let lastw = control.width;
+                        let lasth = control.height;
+                        let neww = control.widthGetter();
+                        let newh = control.heightGetter()
+                        let lastMatrix = control.matrix;
+                        if (lastw != neww || lasth != newh ) {
+                            control.width = neww;
+                            control.height = newh;
+                            control.matrix = makeMatrix(control.width, control.height, function (x, y) {
+                                if (x < lastw && y < lasth) {
+                                    return lastMatrix[x][y];
+                                }
+                                return control.valueGetter(x, y);
+                            });
+                        }
+
+                        let matrixTable = document.getElementById("control-"+key);
+                        matrixTable.innerHTML = "";
+                        generateMatrixTable(key, control, matrixTable);
+
+                    }
+                }
+            }
+
             // CONTROL VARIABLES
 
             const MAX_FLOAT = 1e36;
 
             let controls = {
-                particleCount: makeControl("Particle Count", 10000, 0, 10000),
+                particleCount: makeControl("Particle Count", 10000, 0, 100000),
                 particleTypeCount: makeControl("Particle Types", 8, 1, 63),
-                attractionForce: makeControl("Interaction Force", 100, 0, MAX_FLOAT),
-                croudingForce: makeControl("Crouding Force", 1000, 0, MAX_FLOAT),
-                dragCoef: makeControl("Drag Coef", 0.1, 0, MAX_FLOAT),
-                maxForce: makeControl("Max Force", 10000, 0, MAX_FLOAT),
+                attractionForce: makeControl("Interaction Force", 200, 0, MAX_FLOAT),
+                croudingForce: makeControl("Crouding Force", 500, 0, MAX_FLOAT),
+                dragCoef: makeControl("Drag Coef", 0.05, 0, MAX_FLOAT),
+                maxForce: makeControl("Max Force", 5000, 0, MAX_FLOAT),
                 particleSize: makeControl("Particle Size", 1, 0, MAX_FLOAT),
-                farDist: makeControl("Far Distance", 12, 0, MAX_FLOAT),
-                topDist: makeControl("Top Distance", 24, 0, MAX_FLOAT),
-                closeDist: makeControl("Close Distance", 8, 0, MAX_FLOAT),
-                fps: makeControl("Frames per second", 60, 1, 60)
+                farDist: makeControl("Far Distance", 30, 0, MAX_FLOAT),
+                topDist: makeControl("Top Distance", 20, 0, MAX_FLOAT),
+                closeDist: makeControl("Close Distance", 10, 0, MAX_FLOAT)
             };
 
 
@@ -198,8 +243,17 @@
                 function (x, y) {
                     return rand_n1p1();
                 },
-                -1, 1
-            )
+                -1, 1, null
+            );
+
+            controls["distScaleMatrix"] = makeDynamicControlMatrix("Distance Scale Matrix", 
+                () => controls.particleTypeCount.value,
+                () => controls.particleTypeCount.value,
+                function (x, y) {
+                    return Math.random();
+                },
+                0, 1, 1
+            );
 
             let tableBig = document.createElement("table");
             let trBig = document.createElement("tr");
@@ -212,47 +266,39 @@
 
             {
                 let trElem = document.createElement("tr");
-                let tdElem = document.createElement("td");
-                let updateButton = document.createElement("button");
-                updateButton.innerText = "Restart Simulation";
-                updateButton.onclick = function() {
-                    clearInterval(intervalHandle);
 
+                let td1Elem = document.createElement("td");
+                td1Elem.setAttribute("colspan", 2);
+                let resetButton = document.createElement("button");
+                resetButton.innerText = "Restart Simulation";
+                resetButton.onclick = function() {
+                    restartSimulation()
+                }
+                td1Elem.appendChild(resetButton);
+                trElem.appendChild(td1Elem);
+
+                tableLeftElem.appendChild(trElem);
+            }
+
+            {
+                let trElem = document.createElement("tr");
+
+                let td2Elem = document.createElement("td");
+                td2Elem.setAttribute("colspan", 4);
+                let randomResetButton = document.createElement("button");
+                randomResetButton.innerText = "Randomize All Matrices and Restart";
+                randomResetButton.onclick = function() {
                     for (const [key, control] of Object.entries(controls)) {
-
-                        if (control.type == "number") {
-                            let textBox = document.getElementById("control-"+key);
-                            textBox.value = control.value;
-                            textBox.setAttribute("class", "");
-                        } else if (control.type == "dynamic matrix") {
-                            let lastw = control.width;
-                            let lasth = control.height;
-                            let neww = control.widthGetter();
-                            let newh = control.heightGetter()
-                            let lastMatrix = control.matrix;
-                            if (lastw != neww || lasth != newh ) {
-                                control.width = neww;
-                                control.height = newh;
-                                control.matrix = makeMatrix(control.width, control.height, function (x, y) {
-                                    if (x < lastw && y < lasth) {
-                                        return lastMatrix[x][y];
-                                    }
-                                    return control.valueGetter(x, y);
-                                });
-                            }
-
-                            let matrixTable = document.getElementById("control-"+key);
-                            matrixTable.innerHTML = "";
-                            generateMatrixTable(key, control, matrixTable);
-
+                        if (control.type == "dynamic matrix") {
+                            randomizeMatrix(control, key);
                         }
                     }
-
-                    intervalHandle = setup();
+                    restartSimulation()
                 }
-                tdElem.appendChild(updateButton);
-                trElem.appendChild(tdElem);
-                tableLeftElem.appendChild(trElem);
+                td2Elem.appendChild(randomResetButton);
+                trElem.appendChild(td2Elem);
+
+                tableRightElem.appendChild(trElem);
             }
 
             for (const [key, control] of Object.entries(controls)) {
@@ -297,26 +343,38 @@
                         let fillButton = document.createElement("button");
                         fillButton.innerText = "Randomize";
                         fillButton.onclick = function () {
-                            control.matrix = makeMatrix(control.width, control.height, control.valueGetter);
-
-                            for (let y = 0; y < control.height; y++) {
-                                for (let x = 0; x < control.width; x++) {
-                                    let textBox = document.getElementById("control-"+key+"-"+x+"-"+y);
-                                    textBox.value = control.matrix[x][y];
-                                    control.matrix[x][y] = validate(textBox, control);
-                                    textBox.value = control.matrix[x][y];
-                                }
-                            }
+                            randomizeMatrix(control, key);
                         }
                         tdButton2.append(fillButton);
                         trElem.appendChild(tdButton2);
+
+                        if (control.allSetValue != null) {
+                            let tdButton3 = document.createElement("td");
+
+                            let allButton = document.createElement("button");
+                            allButton.innerText = "Fill all " + control.allSetValue;
+                            allButton.onclick = function () {
+                                control.matrix = makeMatrix(control.width, control.height, (x, y) => control.allSetValue);
+
+                                for (let y = 0; y < control.height; y++) {
+                                    for (let x = 0; x < control.width; x++) {
+                                        let textBox = document.getElementById("control-"+key+"-"+x+"-"+y);
+                                        textBox.value = control.matrix[x][y];
+                                        control.matrix[x][y] = validate(textBox, control);
+                                        textBox.value = control.matrix[x][y];
+                                    }
+                                }
+                            }
+                            tdButton3.append(allButton);
+                            trElem.appendChild(tdButton3);
+                        }
 
                         tableRightElem.appendChild(trElem);
                     }
                     {
                         let trElem = document.createElement("tr");
                         let tdElem = document.createElement("td");
-                        tdElem.setAttribute("colspan", 3);
+                        tdElem.setAttribute("colspan", 4);
                         matrixTable = document.createElement("table");
                         matrixTable.hidden = true;
                         matrixTable.setAttribute("id", "control-"+key);
@@ -327,9 +385,6 @@
                     }
                 }
             }
-
-
-            let intervalHandle = null;
 
 
             tdLeftBig.appendChild(tableLeftElem);
@@ -343,7 +398,14 @@
 
             //
 
-            function setup() {
+            let isRunning = false;
+
+            let doneCallback = function () {
+                isRunning = true;
+                setup(doneCallback);
+            }
+
+            function setup(doneCallback) {
 
                 // CONSTANTS
 
@@ -353,12 +415,11 @@
                 const PARTICLE_STATE_VARIBLE_COUNT = 4; // x, y, last x, last y
                 const WORKGROUP_SIZE = 8;
 
-                const DELTA_TIME = 1.0 / 60;
+                const DELTA_TIME = 1.0 / 128;
                 const PARTICLE_SIZE = controls.particleSize.value;
-                const UPDATE_INTERVAL = 1000 * DELTA_TIME;
 
-                const FAR_DIST = controls.farDist.value + controls.topDist.value + controls.closeDist.value;
-                const TOP_DIST = controls.topDist.value + controls.closeDist.value;
+                const FAR_DIST = controls.farDist.value;
+                const TOP_DIST = controls.topDist.value;
                 const CLOSE_DIST = controls.closeDist.value;
 
                 const ATTRACTION_FORCE = controls.attractionForce.value;
@@ -398,16 +459,10 @@
                 }
 
                 const ATTRACTION_MATRIX = [];
-                // for (let i = 0; i < PARTICLE_TYPE_COUNT*PARTICLE_TYPE_COUNT; i++) {
-                //     ATTRACTION_MATRIX.push(rand_n1p1());
-                //     ATTRACTION_MATRIX.push(0);
-                //     ATTRACTION_MATRIX.push(0);
-                //     ATTRACTION_MATRIX.push(0);
-                // }
                 for (let x = 0; x < PARTICLE_TYPE_COUNT; x++) {
                     for (let y = 0; y < PARTICLE_TYPE_COUNT; y++) {
                         ATTRACTION_MATRIX.push(controls.attractionMatrix.matrix[x][y]);
-                        ATTRACTION_MATRIX.push(0);
+                        ATTRACTION_MATRIX.push(controls.distScaleMatrix.matrix[x][y]);
                         ATTRACTION_MATRIX.push(0);
                         ATTRACTION_MATRIX.push(0);
                     }
@@ -450,6 +505,13 @@
                 // SHADER
 
                 const structsStr = `
+    
+    struct InteractionInfo {
+        attraction: f32,
+        distScale: f32,
+        dummy1: f32,
+        dummy2: f32
+    };
 
     struct Info {
         count: f32,
@@ -474,7 +536,7 @@
         dummy3: f32,
 
         colors: array<vec4f, ${COLORS.length/4}>,
-        attractionMatrix: array<vec4f, ${PARTICLE_TYPE_COUNT*PARTICLE_TYPE_COUNT}>
+        interactionMatrix: array<InteractionInfo, ${PARTICLE_TYPE_COUNT*PARTICLE_TYPE_COUNT}>
     };
 
     struct State {
@@ -514,10 +576,10 @@
 
         let vertPos = pos + (input.pos * info.particleSize);
 
-        let vartPosScaled = ((vertPos / info.canvasSize) - 0.5) * 2;
+        let vertPosScaled = ((vertPos / info.canvasSize) - 0.5) * 2;
 
         var output: VertexOutput;
-        output.pos = vec4f(vartPosScaled, 0, 1);
+        output.pos = vec4f(vertPosScaled, 0, 1);
         output.instance = input.instance;
         return output;
     }
@@ -551,15 +613,19 @@
         return modulo(p, info.canvasSize);
     }
         
-    fn force(dist: f32, attraction: f32) -> f32 {
+    fn force(dist: f32, attraction: f32, distScale: f32) -> f32 {
         if (dist < info.closeDistance) {
             return ((dist / info.closeDistance) - 1.0) * info.repulsionForce;
         }
-        if (dist < info.topDistance) {
-            return ((dist - info.closeDistance) / (info.topDistance - info.closeDistance)) * info.attractionForce * attraction;
+        let topDist = info.topDistance * distScale;
+        if (topDist > 0 && dist < topDist + info.closeDistance) {
+            return ((dist - info.closeDistance) / (topDist)) * info.attractionForce * attraction;
         }
-        // assume already below farDistance as per the check in computeMain
-        return (1.0 - ((dist - info.topDistance) / (info.farDistance - info.topDistance))) * info.attractionForce * attraction;
+        let farDist = info.farDistance * distScale;
+        if (farDist > 0 && dist < farDist + topDist + info.closeDistance) {
+            return (1.0 - ((dist - topDist - info.closeDistance) / (farDist))) * info.attractionForce * attraction;
+        }
+        return 0;
     }
 
     fn minDif(fromV: vec2f, toV: vec2f) -> vec3f {
@@ -606,10 +672,12 @@
             let difInfo = minDif(pos, jpos);
             let dif = difInfo.xy;
             let dist2 = difInfo.z;
-            if (i != j && dist2 < info.farDistance * info.farDistance) {
+            let maxDist = info.closeDistance + info.topDistance + info.farDistance;
+            if (i != j && dist2 < maxDist * maxDist) {
                 let dist = sqrt(dist2);
                 let j_type = j % u32(info.particleTypeCount);
-                forces += dif/dist * force(dist, info.attractionMatrix[i_type + j_type * u32(info.particleTypeCount)].x);
+                let interactionInfo = info.interactionMatrix[i_type + j_type * u32(info.particleTypeCount)];
+                forces += dif/dist * force(dist, interactionInfo.attraction, interactionInfo.distScale);
             }
         }
         
@@ -833,13 +901,20 @@
                     device.queue.submit([encoder.finish()]);
 
                     //
+
+                    if (isRunning) {
+                        requestAnimationFrame(update);
+                    } else {
+                        requestAnimationFrame(doneCallback);
+                    }
                 }
 
-                return setInterval(update, UPDATE_INTERVAL);
+                requestAnimationFrame(update);
 
             }
 
-            intervalHandle = setup();
+            isRunning = true;
+            setup(doneCallback);
             
 
         </script>
