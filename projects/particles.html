@@ -1,0 +1,847 @@
+<!doctype html>
+<html>
+    <head>
+        <title>
+            Particles
+        </title>
+        <style>
+            html, body {
+                width:  100%;
+                height: 100%;
+                margin: 0;
+                background-color: black;
+                color: white;
+                color-scheme: dark;
+                font-family: sans-serif
+            }
+            a {
+                color: rgb(41, 128, 185);
+                text-decoration: none;
+            }
+            a:hover {
+                color: rgb(52, 152, 219);
+            }
+            input {
+                background-color: rgb(44, 62, 80);
+                border-color: rgb(52, 73, 94);
+                width: 6em;
+            }
+            input.error {
+                background-color: rgb(192, 57, 43);
+                border-color: rgb(231, 76, 60);
+            }
+            input.warning {
+                background-color: rgb(243, 156, 18);
+                border-color: rgb(241, 196, 15);
+            }
+            input.pending {
+                background-color: rgb(39, 174, 96);
+                border-color: rgb(46, 204, 113);
+            }
+            button {
+                background-color: rgb(44, 62, 80);
+                border-color: rgb(52, 73, 94);
+            }
+            td {
+                vertical-align: top;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas width="1024" height="512"></canvas>
+        <div id="controls"></div>
+        <p>
+            Inspired by YouTube video <a href="https://www.youtube.com/watch?v=4vk7YvBYpOs">Digital Genius - Simulating Particle Life</a>.
+            <br/>
+            Thanks to <a href="https://codelabs.developers.google.com/your-first-webgpu-app#0">Google Colabs WebGPU Tutorial</a> for learning how to use WebGPU.
+        </p>
+        <script type="module">
+            
+            const canvas = document.querySelector("canvas");
+            const controlsDiv = document.getElementById("controls");
+
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            if (!navigator.gpu) {
+                throw new Error("WebGPU not supported");
+            }
+            const adapter = await navigator.gpu.requestAdapter();
+            
+            if (!adapter) {
+                throw new Error("No appropriate GPU Adapter found.");
+            }
+
+            const device = await adapter.requestDevice();
+
+            const context = canvas.getContext("webgpu");
+            const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+
+            context.configure({
+                device: device,
+                format: canvasFormat,
+            });
+
+            function color4f(num) {
+                let r = (num >> 16) & 0xff;
+                let g = (num >> 8) & 0xff;
+                let b = (num) & 0xff;
+                return [r / 255.0, g / 255.0, b / 255.0, 1.0];
+            }
+
+            function rand_n1p1() {
+                return (Math.random() - 0.5) * 2;
+            }
+
+            function makeControl(name, value, min, max) {
+                return {
+                    label: name,
+                    type: "number",
+                    value: value,
+                    min: min,
+                    max: max
+                }
+            }
+
+            function makeMatrix(width, height, valueGetter) {
+                let matrix = [];
+                for (let y = 0; y < height; y++) {
+                    let row = [];
+                    for (let x = 0; x < width; x++) {
+                        row.push(valueGetter(x, y));
+                    }
+                    matrix.push(row);
+                }
+                return matrix;
+            }
+
+            function makeDynamicControlMatrix(name, widthGetter, heightGetter, valueGetter, min, max) {
+                let width = widthGetter();
+                let height = heightGetter();
+                return {
+                    label: name,
+                    type: "dynamic matrix",
+                    widthGetter: widthGetter,
+                    heightGetter: heightGetter,
+                    valueGetter: valueGetter,
+                    min: min,
+                    max: max,
+
+                    width: width,
+                    height: height,
+                    matrix: makeMatrix(width, height, valueGetter)
+                }
+            }
+
+            function validate(textBox, control) {
+                let newValue = Number(textBox.value.replace(/[^0-9\.-]/gim,""));
+                if (isNaN(newValue) || isNaN(textBox.value)) {
+                    textBox.setAttribute("class", "error");
+                    return;
+                }
+                textBox.setAttribute("class", "pending");
+                if (newValue < control.min) {
+                    textBox.setAttribute("class", "warning");
+                    newValue = control.min;
+                }
+                if (newValue > control.max) {
+                    textBox.setAttribute("class", "warning");
+                    newValue = control.max;
+                }
+                return newValue;
+            }
+
+            function generateMatrixTable(key, control, matrixTable) {
+                for (let y = 0; y < control.height; y++) {
+                    let matrixTr = document.createElement("tr");
+                    for (let x = 0; x < control.width; x++) {
+                        let matrixTd = document.createElement("td");
+                        let textBox = document.createElement("input");
+                        textBox.setAttribute("type", "text");
+                        textBox.setAttribute("id", "control-"+key+"-"+x+"-"+y);
+                        textBox.value = control.matrix[x][y];
+                        textBox.onclick = function () {
+                            textBox.select();
+                        }
+                        textBox.oninput = function () {
+                            control.matrix[x][y] = validate(textBox, control);
+                        };
+                        matrixTd.appendChild(textBox);
+                        matrixTr.appendChild(matrixTd);
+                    }
+                    matrixTable.appendChild(matrixTr);
+                }
+            }
+
+            // CONTROL VARIABLES
+
+            const MAX_FLOAT = 1e36;
+
+            let controls = {
+                particleCount: makeControl("Particle Count", 10000, 0, 10000),
+                particleTypeCount: makeControl("Particle Types", 8, 1, 63),
+                attractionForce: makeControl("Interaction Force", 100, 0, MAX_FLOAT),
+                croudingForce: makeControl("Crouding Force", 1000, 0, MAX_FLOAT),
+                dragCoef: makeControl("Drag Coef", 0.1, 0, MAX_FLOAT),
+                maxForce: makeControl("Max Force", 10000, 0, MAX_FLOAT),
+                particleSize: makeControl("Particle Size", 1, 0, MAX_FLOAT),
+                farDist: makeControl("Far Distance", 12, 0, MAX_FLOAT),
+                topDist: makeControl("Top Distance", 24, 0, MAX_FLOAT),
+                closeDist: makeControl("Close Distance", 8, 0, MAX_FLOAT),
+                fps: makeControl("Frames per second", 60, 1, 60)
+            };
+
+
+            controls["attractionMatrix"] = makeDynamicControlMatrix("Attraction Matrix", 
+                () => controls.particleTypeCount.value,
+                () => controls.particleTypeCount.value,
+                function (x, y) {
+                    return rand_n1p1();
+                },
+                -1, 1
+            )
+
+            let tableBig = document.createElement("table");
+            let trBig = document.createElement("tr");
+            let tdLeftBig = document.createElement("td");
+            let tdRightBig = document.createElement("td");
+
+            let tableLeftElem = document.createElement("table");
+            let tableRightElem = document.createElement("table");
+
+
+            {
+                let trElem = document.createElement("tr");
+                let tdElem = document.createElement("td");
+                let updateButton = document.createElement("button");
+                updateButton.innerText = "Restart Simulation";
+                updateButton.onclick = function() {
+                    clearInterval(intervalHandle);
+
+                    for (const [key, control] of Object.entries(controls)) {
+
+                        if (control.type == "number") {
+                            let textBox = document.getElementById("control-"+key);
+                            textBox.value = control.value;
+                            textBox.setAttribute("class", "");
+                        } else if (control.type == "dynamic matrix") {
+                            let lastw = control.width;
+                            let lasth = control.height;
+                            let neww = control.widthGetter();
+                            let newh = control.heightGetter()
+                            let lastMatrix = control.matrix;
+                            if (lastw != neww || lasth != newh ) {
+                                control.width = neww;
+                                control.height = newh;
+                                control.matrix = makeMatrix(control.width, control.height, function (x, y) {
+                                    if (x < lastw && y < lasth) {
+                                        return lastMatrix[x][y];
+                                    }
+                                    return control.valueGetter(x, y);
+                                });
+                            }
+
+                            let matrixTable = document.getElementById("control-"+key);
+                            matrixTable.innerHTML = "";
+                            generateMatrixTable(key, control, matrixTable);
+
+                        }
+                    }
+
+                    intervalHandle = setup();
+                }
+                tdElem.appendChild(updateButton);
+                trElem.appendChild(tdElem);
+                tableLeftElem.appendChild(trElem);
+            }
+
+            for (const [key, control] of Object.entries(controls)) {
+                if (control.type == "number") {
+                    let trElem = document.createElement("tr");
+                    let tdLabel = document.createElement("td");
+                    tdLabel.innerText = control.label;
+                    trElem.appendChild(tdLabel);
+
+                    let tdControl = document.createElement("td");
+                    let textBox = document.createElement("input");
+                    textBox.setAttribute("type", "text");
+                    textBox.setAttribute("id", "control-"+key);
+                    textBox.value = control.value;
+                    textBox.oninput = function () {
+                        control.value = validate(textBox, control);
+                    };
+                    tdControl.appendChild(textBox);
+                    trElem.appendChild(tdControl);
+                    tableLeftElem.appendChild(trElem);
+                } else if (control.type == "dynamic matrix") {
+                    let matrixTable;
+                    {
+                        let trElem = document.createElement("tr");
+
+                        let tdLabel = document.createElement("td");
+                        tdLabel.innerText = control.label;
+                        trElem.appendChild(tdLabel);
+
+                        let tdButton1 = document.createElement("td");
+
+                        let hideButton = document.createElement("button");
+                        hideButton.innerText = "Show/Hide";
+                        hideButton.onclick = function () {
+                            matrixTable.hidden = !matrixTable.hidden;
+                        }
+                        tdButton1.append(hideButton);
+                        trElem.appendChild(tdButton1);
+
+                        let tdButton2 = document.createElement("td");
+
+                        let fillButton = document.createElement("button");
+                        fillButton.innerText = "Randomize";
+                        fillButton.onclick = function () {
+                            control.matrix = makeMatrix(control.width, control.height, control.valueGetter);
+
+                            for (let y = 0; y < control.height; y++) {
+                                for (let x = 0; x < control.width; x++) {
+                                    let textBox = document.getElementById("control-"+key+"-"+x+"-"+y);
+                                    textBox.value = control.matrix[x][y];
+                                    control.matrix[x][y] = validate(textBox, control);
+                                    textBox.value = control.matrix[x][y];
+                                }
+                            }
+                        }
+                        tdButton2.append(fillButton);
+                        trElem.appendChild(tdButton2);
+
+                        tableRightElem.appendChild(trElem);
+                    }
+                    {
+                        let trElem = document.createElement("tr");
+                        let tdElem = document.createElement("td");
+                        tdElem.setAttribute("colspan", 3);
+                        matrixTable = document.createElement("table");
+                        matrixTable.hidden = true;
+                        matrixTable.setAttribute("id", "control-"+key);
+                        generateMatrixTable(key, control, matrixTable);
+                        tdElem.appendChild(matrixTable);
+                        trElem.appendChild(tdElem);
+                        tableRightElem.appendChild(trElem);
+                    }
+                }
+            }
+
+
+            let intervalHandle = null;
+
+
+            tdLeftBig.appendChild(tableLeftElem);
+            tdRightBig.appendChild(tableRightElem);
+            trBig.appendChild(tdLeftBig);
+            trBig.appendChild(tdRightBig);
+            tableBig.appendChild(trBig);
+
+            controlsDiv.appendChild(tableBig);
+
+
+            //
+
+            function setup() {
+
+                // CONSTANTS
+
+                const PARTICLE_COUNT = controls.particleCount.value;
+                const PARTICLE_TYPE_COUNT = controls.particleTypeCount.value;
+
+                const PARTICLE_STATE_VARIBLE_COUNT = 4; // x, y, last x, last y
+                const WORKGROUP_SIZE = 8;
+
+                const DELTA_TIME = 1.0 / 60;
+                const PARTICLE_SIZE = controls.particleSize.value;
+                const UPDATE_INTERVAL = 1000 * DELTA_TIME;
+
+                const FAR_DIST = controls.farDist.value + controls.topDist.value + controls.closeDist.value;
+                const TOP_DIST = controls.topDist.value + controls.closeDist.value;
+                const CLOSE_DIST = controls.closeDist.value;
+
+                const ATTRACTION_FORCE = controls.attractionForce.value;
+                const REPULSION_FORCE = controls.croudingForce.value;
+                const DRAG_COEF = controls.dragCoef.value;
+                const MAX_FORCE = controls.maxForce.value;
+
+                const COLORS = [
+                    ...color4f(0xff0000),
+                    ...color4f(0x00ff00),
+                    ...color4f(0x0000ff),
+                    
+                    ...color4f(0xffff00),
+                    ...color4f(0xff00ff),
+
+                    ...color4f(0x0080ff),
+                    ...color4f(0xff8000),
+                    ...color4f(0x8000ff),
+
+                    ...color4f(0x00ffff),
+                    ...color4f(0xff0080),
+                    ...color4f(0x80ff00),
+                    ...color4f(0x00ff80),
+                    ...color4f(0xff8080),
+                    ...color4f(0x80ff80),
+                    ...color4f(0x8080ff),
+                    ...color4f(0x808080),
+
+                    ...color4f(0xffffff),
+                ];
+
+                while (COLORS.length < PARTICLE_TYPE_COUNT*4) {
+                    COLORS.push(Math.random());
+                    COLORS.push(Math.random());
+                    COLORS.push(Math.random());
+                    COLORS.push(1.0);
+                }
+
+                const ATTRACTION_MATRIX = [];
+                // for (let i = 0; i < PARTICLE_TYPE_COUNT*PARTICLE_TYPE_COUNT; i++) {
+                //     ATTRACTION_MATRIX.push(rand_n1p1());
+                //     ATTRACTION_MATRIX.push(0);
+                //     ATTRACTION_MATRIX.push(0);
+                //     ATTRACTION_MATRIX.push(0);
+                // }
+                for (let x = 0; x < PARTICLE_TYPE_COUNT; x++) {
+                    for (let y = 0; y < PARTICLE_TYPE_COUNT; y++) {
+                        ATTRACTION_MATRIX.push(controls.attractionMatrix.matrix[x][y]);
+                        ATTRACTION_MATRIX.push(0);
+                        ATTRACTION_MATRIX.push(0);
+                        ATTRACTION_MATRIX.push(0);
+                    }
+                }
+
+                //
+
+                // VERTS
+
+                const vertices = new Float32Array([
+                    //   X,    Y,
+                    -1.0, -1.0, // Triangle 1
+                    1.0, -1.0,
+                    1.0,  1.0,
+
+                    -1.0, -1.0, // Triangle 2
+                    1.0,  1.0,
+                    -1.0,  1.0,
+                ]);
+
+                const vertexBuffer = device.createBuffer({
+                    label: "Particle vertices",
+                    size: vertices.byteLength,
+                    usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+                });
+
+                device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/0, vertices);
+
+                const vertexBufferLayout = {
+                    arrayStride: 8,
+                    attributes: [{
+                        format: "float32x2",
+                        offset: 0,
+                        shaderLocation: 0, // Position, see vertex shader
+                    }],
+                };
+
+                //
+
+                // SHADER
+
+                const structsStr = `
+
+    struct Info {
+        count: f32,
+        particleSize: f32,
+        particleTypeCount: f32,
+
+        dt: f32,
+
+        farDistance: f32,
+        topDistance: f32,
+        closeDistance: f32,
+
+        dummy1: f32,
+
+        attractionForce: f32,
+        repulsionForce: f32,
+        dragCoef: f32,
+        maxForce: f32,
+
+        canvasSize: vec2f,
+        dummy2: f32,
+        dummy3: f32,
+
+        colors: array<vec4f, ${COLORS.length/4}>,
+        attractionMatrix: array<vec4f, ${PARTICLE_TYPE_COUNT*PARTICLE_TYPE_COUNT}>
+    };
+
+    struct State {
+        pos: vec2f,
+        lastPos: vec2f
+    };
+                `;
+
+                const particleShaderModule = device.createShaderModule({
+                label: "Particle shader",
+                code: structsStr+`
+
+    struct VertexInput {
+    @location(0) pos: vec2f,
+    @builtin(instance_index) instance: u32,
+    };
+
+    struct VertexOutput {
+    @builtin(position) pos: vec4f,
+    @location(0) @interpolate(flat) instance: u32,
+    };
+
+    struct FragInput {
+    @location(0) @interpolate(flat) instance: u32,
+    };
+
+    @group(0) @binding(0) var<uniform> info: Info;
+
+    @group(0) @binding(1) var<storage> particleStates: array<State>;
+
+    @vertex
+    fn vertexMain(input: VertexInput) -> VertexOutput {
+
+        let i = input.instance;
+
+        let pos = particleStates[i].pos;
+
+        let vertPos = pos + (input.pos * info.particleSize);
+
+        let vartPosScaled = ((vertPos / info.canvasSize) - 0.5) * 2;
+
+        var output: VertexOutput;
+        output.pos = vec4f(vartPosScaled, 0, 1);
+        output.instance = input.instance;
+        return output;
+    }
+
+    @fragment
+    fn fragmentMain(input: FragInput) -> @location(0) vec4f {
+        let particleType = input.instance % u32(info.particleTypeCount);
+        return info.colors[particleType];
+    }
+
+    `
+                });
+
+                //
+
+                // COMPUTE SHADER
+                const simulationShaderModule = device.createShaderModule({
+                label: "Simulation shader",
+                code: structsStr+`
+
+    @group(0) @binding(0) var<uniform> info: Info;
+
+    @group(0) @binding(1) var<storage> particleStateIn: array<State>;
+    @group(0) @binding(2) var<storage, read_write> particleStateOut: array<State>;
+
+    fn modulo(a: vec2f, b: vec2f) -> vec2f {
+        return (a%b+b)%b;
+    }
+
+    fn wrap(p: vec2f) -> vec2f {
+        return modulo(p, info.canvasSize);
+    }
+        
+    fn force(dist: f32, attraction: f32) -> f32 {
+        if (dist < info.closeDistance) {
+            return ((dist / info.closeDistance) - 1.0) * info.repulsionForce;
+        }
+        if (dist < info.topDistance) {
+            return ((dist - info.closeDistance) / (info.topDistance - info.closeDistance)) * info.attractionForce * attraction;
+        }
+        // assume already below farDistance as per the check in computeMain
+        return (1.0 - ((dist - info.topDistance) / (info.farDistance - info.topDistance))) * info.attractionForce * attraction;
+    }
+
+    fn minDif(fromV: vec2f, toV: vec2f) -> vec3f {
+
+        const moveV = array(
+            vec2f(1, 0), 
+            vec2f(-1, 0), 
+            vec2f(0, 1), 
+            vec2f(0, -1),
+            vec2f(1, 1), 
+            vec2f(-1, -1), 
+            vec2f(-1, 1), 
+            vec2f(1, -1));
+
+        var dif: vec2f = toV - fromV;
+        var dist2: f32 = dot(dif, dif);
+
+        for (var i = 0; i < 8; i++) {
+            let difi = toV + (moveV[i] * info.canvasSize) - fromV;
+            let dist2i = dot(difi, difi);
+            if (dist2i < dist2) {
+                dif = difi;
+                dist2 = dist2i;
+            }
+        }
+
+        return vec3f(dif, dist2);
+    }
+
+    @compute
+    @workgroup_size(${WORKGROUP_SIZE})
+    fn computeMain(@builtin(global_invocation_id) id: vec3u) {
+        let i = id.x;
+
+        let pos = particleStateIn[i].pos;
+        var forces = vec2f(0, 0);
+
+        let qty = u32(info.count);
+
+        let i_type = i % u32(info.particleTypeCount);
+
+        for(var j: u32 = 0; j < qty; j++) {
+            let jpos = particleStateIn[j].pos;
+            let difInfo = minDif(pos, jpos);
+            let dif = difInfo.xy;
+            let dist2 = difInfo.z;
+            if (i != j && dist2 < info.farDistance * info.farDistance) {
+                let dist = sqrt(dist2);
+                let j_type = j % u32(info.particleTypeCount);
+                forces += dif/dist * force(dist, info.attractionMatrix[i_type + j_type * u32(info.particleTypeCount)].x);
+            }
+        }
+        
+        let forcesMag2 = dot(forces, forces);
+        if (forcesMag2 > info.maxForce*info.maxForce) {
+            forces = forces / sqrt(forcesMag2) * info.maxForce;
+        }
+
+        // use Verlet integration: p_n+1 = 2pn - pn-1 + an * dt^2
+        
+        let lastPos = particleStateIn[i].lastPos;
+        let dif = minDif(pos, lastPos);
+        let velocity = sqrt(dif.z) / info.dt;
+        var dragForce = vec2f(0, 0);
+        if (dif.z != 0) {
+            dragForce = normalize(dif.xy) * velocity * velocity * info.dragCoef;
+        }
+        let acceleration = forces + dragForce; // Could divide by mass but for now they are all mass=1
+
+        let newPos = 2*pos - lastPos + acceleration * (info.dt * info.dt);
+
+        particleStateOut[i].pos = wrap(newPos);
+        particleStateOut[i].lastPos = pos;
+    }
+
+    `
+                });
+                //
+
+                // UNIFORMS
+
+                const uniformArray = new Float32Array([
+                    PARTICLE_COUNT, 
+                    PARTICLE_SIZE, 
+                    PARTICLE_TYPE_COUNT,
+
+                    DELTA_TIME, 
+
+                    FAR_DIST,
+                    TOP_DIST, 
+                    CLOSE_DIST,
+
+                    0,
+
+                    ATTRACTION_FORCE,
+                    REPULSION_FORCE,
+                    DRAG_COEF,
+                    MAX_FORCE,
+
+                    canvas.width,
+                    canvas.height,
+                    0,0,
+
+                    ...COLORS,
+                    ...ATTRACTION_MATRIX
+                ]);
+
+                const uniformBuffer = device.createBuffer({
+                    label: "Particles Info Uniforms",
+                    size: uniformArray.byteLength,
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+                });
+                device.queue.writeBuffer(uniformBuffer, 0, uniformArray);
+
+                //
+
+                // STORAGE
+                const particleStateArray = new Float32Array(PARTICLE_COUNT * PARTICLE_STATE_VARIBLE_COUNT);
+
+                const particleStateStorage = [
+                    device.createBuffer({
+                        label: "Particle State A",
+                        size: particleStateArray.byteLength,
+                        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    }),
+                    device.createBuffer({
+                        label: "Particle State B",
+                        size: particleStateArray.byteLength,
+                        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    })
+                ];
+                //
+
+                // BIND
+
+                const bindGroupLayout = device.createBindGroupLayout({
+                label: "Particle Bind Group Layout",
+                entries: [{
+                    binding: 0,
+                    visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,
+                    buffer: {} // uniform buffer
+                }, {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,
+                    buffer: { type: "read-only-storage"} // Particle state input buffer
+                }, {
+                    binding: 2,
+                    visibility: GPUShaderStage.COMPUTE,
+                    buffer: { type: "storage"} // Particle state output buffer
+                }]
+                });
+
+                const bindGroups = [
+                device.createBindGroup({
+                    label: "Particle renderer bind group A",
+                    layout: bindGroupLayout,
+                    entries: [{
+                        binding: 0,
+                        resource: { buffer: uniformBuffer }
+                    }, {
+                        binding: 1,
+                        resource: { buffer: particleStateStorage[0] }
+                    }, {
+                        binding: 2,
+                        resource: { buffer: particleStateStorage[1] }
+                    }],
+                }),
+                device.createBindGroup({
+                    label: "Particle renderer bind group B",
+                    layout: bindGroupLayout,
+                    entries: [{
+                        binding: 0,
+                        resource: { buffer: uniformBuffer }
+                    }, {
+                        binding: 1,
+                        resource: { buffer: particleStateStorage[1] }
+                    }, {
+                        binding: 2,
+                        resource: { buffer: particleStateStorage[0] }
+                    }],
+                })
+                ];
+                //
+
+
+                // PIPELINES
+                const pipelineLayout = device.createPipelineLayout({
+                    label: "Particle Pipeline Layout",
+                    bindGroupLayouts: [ bindGroupLayout ],
+                });
+
+                const particlePipeline = device.createRenderPipeline({
+                    label: "Particle pipeline",
+                    layout: pipelineLayout,
+                    vertex: {
+                        module: particleShaderModule,
+                        entryPoint: "vertexMain",
+                        buffers: [vertexBufferLayout]
+                    },
+                    fragment: {
+                        module: particleShaderModule,
+                        entryPoint: "fragmentMain",
+                        targets: [{
+                            format: canvasFormat
+                        }]
+                    }
+                });
+
+                const simulationPipeline = device.createComputePipeline({
+                    label: "Simulation pipeline",
+                    layout: pipelineLayout,
+                    compute: {
+                        module: simulationShaderModule,
+                        entryPoint: "computeMain",
+                    }
+                    });
+                //
+
+                // INITAL STATE
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    let x = Math.random() * canvas.width;
+                    let y = Math.random() * canvas.height;
+                    particleStateArray[i*4+0] = x; // x
+                    particleStateArray[i*4+1] = y; // y
+                    particleStateArray[i*4+2] = x; // last x
+                    particleStateArray[i*4+3] = y; // last y
+                }
+                device.queue.writeBuffer(particleStateStorage[0], 0, particleStateArray);
+                device.queue.writeBuffer(particleStateStorage[1], 0, particleStateArray);
+                //
+
+
+                let step = 0;
+
+                function update() {
+
+                    const encoder = device.createCommandEncoder();
+
+                    // COMPUTE
+                    const computePass = encoder.beginComputePass();
+
+                    computePass.setPipeline(simulationPipeline);
+                    computePass.setBindGroup(0, bindGroups[step % 2]);
+
+                    const workgroupCount = Math.ceil(PARTICLE_COUNT / WORKGROUP_SIZE);
+                    computePass.dispatchWorkgroups(workgroupCount);
+
+                    computePass.end();
+
+                    step++;
+                    //
+
+                    // RENDER
+
+                    const renderPass = encoder.beginRenderPass({
+                        colorAttachments: [{
+                            view: context.getCurrentTexture().createView(),
+                            loadOp: "clear",
+                            clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                            storeOp: "store",
+                        }]
+                    });
+
+                    renderPass.setPipeline(particlePipeline);
+                    renderPass.setVertexBuffer(0, vertexBuffer);
+                    renderPass.setBindGroup(0, bindGroups[step % 2]);
+                    renderPass.draw(vertices.length / 2, PARTICLE_COUNT);
+
+                    renderPass.end();
+
+                    device.queue.submit([encoder.finish()]);
+
+                    //
+                }
+
+                return setInterval(update, UPDATE_INTERVAL);
+
+            }
+
+            intervalHandle = setup();
+            
+
+        </script>
+    </body>
+</html>
