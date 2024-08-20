@@ -48,11 +48,14 @@
         </style>
     </head>
     <body>
-        <canvas width="1024" height="512"></canvas>
+        <div>
+            <canvas width="1024" height="512"></canvas>
+        </div>
         <div id="controls"></div>
         <p>
+            <br />
             Inspired by YouTube video <a href="https://www.youtube.com/watch?v=4vk7YvBYpOs">Digital Genius - Simulating Particle Life</a>.
-            <br/>
+            <br />
             Thanks to <a href="https://codelabs.developers.google.com/your-first-webgpu-app#0">Google Colabs WebGPU Tutorial</a> for teaching me how to use WebGPU.
         </p>
         <script type="module">
@@ -63,19 +66,31 @@
             canvas.width  = window.innerWidth;
             canvas.height = window.innerHeight;
 
-            if (!navigator.gpu) {
-                throw new Error("WebGPU not supported");
-            }
-            const adapter = await navigator.gpu.requestAdapter();
-            
-            if (!adapter) {
-                throw new Error("No appropriate GPU Adapter found.");
-            }
+            let adapter;
+            let device;
+            let context;
+            let canvasFormat;
 
-            const device = await adapter.requestDevice();
+            try {
 
-            const context = canvas.getContext("webgpu");
-            const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+                if (!navigator.gpu) {
+                    throw new Error("WebGPU not supported");
+                }
+                adapter = await navigator.gpu.requestAdapter();
+                
+                if (!adapter) {
+                    throw new Error("No appropriate GPU Adapter found.");
+                }
+
+                device = await adapter.requestDevice();
+
+                context = canvas.getContext("webgpu");
+                canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+
+            } catch (e) {
+                canvas.parentElement.innerText = "Failed to initalize WebGPU. It is a new API so some browsers don't support it yet. Sorry about that.";
+                throw e;
+            }
 
             context.configure({
                 device: device,
@@ -186,9 +201,20 @@
                 }
             }
 
+            function toggleFullscreen(button) {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+
             function restartSimulation() {
                 for (const [key, control] of Object.entries(controls)) {
                     isRunning = false;
+
+                    canvas.width  = window.innerWidth;
+                    canvas.height = window.innerHeight;
 
                     if (control.type == "number") {
                         let textBox = document.getElementById("control-"+key);
@@ -392,6 +418,17 @@
             trBig.appendChild(tdLeftBig);
             trBig.appendChild(tdRightBig);
             tableBig.appendChild(trBig);
+
+            let trFooter = document.createElement("tr");
+            let tdFooter = document.createElement("td");
+            let fullscreenButton = document.createElement("button");
+            fullscreenButton.onclick = function() {
+                toggleFullscreen(fullscreenButton);
+            }
+            fullscreenButton.innerText = "Toggle Fullscreen";
+            tdFooter.appendChild(fullscreenButton);
+            trFooter.appendChild(tdFooter);
+            tableBig.appendChild(trFooter);
 
             controlsDiv.appendChild(tableBig);
 
