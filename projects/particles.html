@@ -130,7 +130,7 @@
                 return matrix;
             }
 
-            function makeDynamicControlMatrix(name, widthGetter, heightGetter, valueGetter, min, max, allSetValue) {
+            function makeDynamicControlMatrix(name, widthGetter, heightGetter, valueGetter, min, max, allSetValues) {
                 let width = widthGetter();
                 let height = heightGetter();
                 return {
@@ -141,7 +141,7 @@
                     valueGetter: valueGetter,
                     min: min,
                     max: max,
-                    allSetValue: allSetValue,
+                    allSetValues: allSetValues,
 
                     width: width,
                     height: height,
@@ -269,7 +269,7 @@
                 function (x, y) {
                     return rand_n1p1();
                 },
-                -1, 1, null
+                -1, 1, [-1, 0, 1]
             );
 
             controls["distScaleMatrix"] = makeDynamicControlMatrix("Distance Scale Matrix", 
@@ -278,7 +278,7 @@
                 function (x, y) {
                     return Math.random();
                 },
-                0, 1, 1
+                0, 1, [0, 1]
             );
 
             let tableBig = document.createElement("table");
@@ -374,13 +374,14 @@
                         tdButton2.append(fillButton);
                         trElem.appendChild(tdButton2);
 
-                        if (control.allSetValue != null) {
-                            let tdButton3 = document.createElement("td");
+                        let tdButton3 = document.createElement("td");
+                        for (let allSetValueIndex = 0; allSetValueIndex < control.allSetValues.length; allSetValueIndex++) {
+                            let allSetValue = control.allSetValues[allSetValueIndex];
 
                             let allButton = document.createElement("button");
-                            allButton.innerText = "Fill all " + control.allSetValue;
+                            allButton.innerText = "Fill " + allSetValue;
                             allButton.onclick = function () {
-                                control.matrix = makeMatrix(control.width, control.height, (x, y) => control.allSetValue);
+                                control.matrix = makeMatrix(control.width, control.height, (x, y) => allSetValue);
 
                                 for (let y = 0; y < control.height; y++) {
                                     for (let x = 0; x < control.width; x++) {
@@ -392,8 +393,8 @@
                                 }
                             }
                             tdButton3.append(allButton);
-                            trElem.appendChild(tdButton3);
                         }
+                        trElem.appendChild(tdButton3);
 
                         tableRightElem.appendChild(trElem);
                     }
