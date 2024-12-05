@@ -95,6 +95,7 @@
             context.configure({
                 device: device,
                 format: canvasFormat,
+                alphaMode: 'premultiplied',
             });
 
             function color4f(num) {
@@ -252,14 +253,16 @@
             let controls = {
                 particleCount: makeControl("Particle Count", 10000, 0, 100000),
                 particleTypeCount: makeControl("Particle Types", 8, 1, 63),
+                particleSize: makeControl("Particle Size", 1, 0, MAX_FLOAT),
                 attractionForce: makeControl("Interaction Force", 200, 0, MAX_FLOAT),
                 croudingForce: makeControl("Crouding Force", 500, 0, MAX_FLOAT),
                 dragCoef: makeControl("Drag Coef", 0.05, 0, MAX_FLOAT),
                 maxForce: makeControl("Max Force", 5000, 0, MAX_FLOAT),
-                particleSize: makeControl("Particle Size", 1, 0, MAX_FLOAT),
                 farDist: makeControl("Far Distance", 30, 0, MAX_FLOAT),
                 topDist: makeControl("Top Distance", 20, 0, MAX_FLOAT),
-                closeDist: makeControl("Close Distance", 10, 0, MAX_FLOAT)
+                closeDist: makeControl("Close Distance", 10, 0, MAX_FLOAT),
+                harmDist: makeControl("Croud Harm Distance", 1, 0, MAX_FLOAT),
+                harmAmount: makeControl("Croud Harm Amount", 0.01, 0, MAX_FLOAT)
             };
 
 
@@ -450,7 +453,7 @@
                 const PARTICLE_COUNT = controls.particleCount.value;
                 const PARTICLE_TYPE_COUNT = controls.particleTypeCount.value;
 
-                const PARTICLE_STATE_VARIBLE_COUNT = 4; // x, y, last x, last y
+                const PARTICLE_STATE_VARIBLE_COUNT = 8; // x, y, last x, last y, life, dummy * 3
                 const WORKGROUP_SIZE = 8;
 
                 const DELTA_TIME = 1.0 / 128;
@@ -464,6 +467,9 @@
                 const REPULSION_FORCE = controls.croudingForce.value;
                 const DRAG_COEF = controls.dragCoef.value;
                 const MAX_FORCE = controls.maxForce.value;
+
+                const HARM_DIST = controls.harmDist.value;
+                const HARM_AMOUNT = controls.harmAmount.value;
 
                 const COLORS = [
                     ...color4f(0xff0000),
@@ -562,7 +568,7 @@
         topDistance: f32,
         closeDistance: f32,
 
-        dummy1: f32,
+        harmDistance: f32,
 
         attractionForce: f32,
         repulsionForce: f32,
@@ -570,7 +576,7 @@
         maxForce: f32,
 
         canvasSize: vec2f,
-        dummy2: f32,
+        harmAmount: f32,
         dummy3: f32,
 
         colors: array<vec4f, ${COLORS.length/4}>,
@@ -579,7 +585,11 @@
 
     struct State {
         pos: vec2f,
-        lastPos: vec2f
+        lastPos: vec2f,
+        life: f32,
+        dummy1: f32,
+        dummy2: f32,
+        dummy3: f32,
     };
                 `;
 
@@ -625,7 +635,8 @@
     @fragment
     fn fragmentMain(input: FragInput) -> @location(0) vec4f {
         let particleType = input.instance % u32(info.particleTypeCount);
-        return info.colors[particleType];
+        let alpha = min(2-particleStates[input.instance].life, 1);
+        return vec4f(info.colors[particleType].rgb * alpha, alpha);
     }
 
     `
@@ -705,6 +716,8 @@
 
         let i_type = i % u32(info.particleTypeCount);
 
+        var life = particleStateIn[i].life;
+
         for(var j: u32 = 0; j < qty; j++) {
             let jpos = particleStateIn[j].pos;
             let difInfo = minDif(pos, jpos);
@@ -716,6 +729,9 @@
                 let j_type = j % u32(info.particleTypeCount);
                 let interactionInfo = info.interactionMatrix[i_type + j_type * u32(info.particleTypeCount)];
                 forces += dif/dist * force(dist, interactionInfo.attraction, interactionInfo.distScale);
+                if (dist2 < info.harmDistance * info.harmDistance) {
+                    life = life - info.harmAmount;
+                }
             }
         }
         
@@ -735,10 +751,21 @@
         }
         let acceleration = forces + dragForce; // Could divide by mass but for now they are all mass=1
 
-        let newPos = 2*pos - lastPos + acceleration * (info.dt * info.dt);
+        var newPos = 2*pos - lastPos + acceleration * (info.dt * info.dt);
+        var oldPos = pos;
 
+        if (life < 0.0) {
+            // die and warp to a semi-random location
+            life = 2.0;
+            newPos = wrap(pos + velocity * forcesMag2 * 100);
+            oldPos = newPos;
+        } else if (life > 1.0) {
+            life = life - 0.05;
+        }
+
+        particleStateOut[i].life = life;
         particleStateOut[i].pos = wrap(newPos);
-        particleStateOut[i].lastPos = pos;
+        particleStateOut[i].lastPos = oldPos;
     }
 
     `
@@ -758,7 +785,7 @@
                     TOP_DIST, 
                     CLOSE_DIST,
 
-                    0,
+                    HARM_DIST,
 
                     ATTRACTION_FORCE,
                     REPULSION_FORCE,
@@ -767,7 +794,8 @@
 
                     canvas.width,
                     canvas.height,
-                    0,0,
+                    HARM_AMOUNT,
+                    0,
 
                     ...COLORS,
                     ...ATTRACTION_MATRIX
@@ -869,7 +897,17 @@
                         module: particleShaderModule,
                         entryPoint: "fragmentMain",
                         targets: [{
-                            format: canvasFormat
+                            format: canvasFormat,
+                            blend: {
+                            color: {
+                                srcFactor: 'one',
+                                dstFactor: 'one-minus-src-alpha'
+                            },
+                            alpha: {
+                                srcFactor: 'one',
+                                dstFactor: 'one-minus-src-alpha'
+                            },
+                            },
                         }]
                     }
                 });
@@ -888,10 +926,11 @@
                 for (let i = 0; i < PARTICLE_COUNT; i++) {
                     let x = Math.random() * canvas.width;
                     let y = Math.random() * canvas.height;
-                    particleStateArray[i*4+0] = x; // x
-                    particleStateArray[i*4+1] = y; // y
-                    particleStateArray[i*4+2] = x; // last x
-                    particleStateArray[i*4+3] = y; // last y
+                    particleStateArray[i*PARTICLE_STATE_VARIBLE_COUNT+0] = x; // x
+                    particleStateArray[i*PARTICLE_STATE_VARIBLE_COUNT+1] = y; // y
+                    particleStateArray[i*PARTICLE_STATE_VARIBLE_COUNT+2] = x; // last x
+                    particleStateArray[i*PARTICLE_STATE_VARIBLE_COUNT+3] = y; // last y
+                    particleStateArray[i*PARTICLE_STATE_VARIBLE_COUNT+4] = 1.0; // life
                 }
                 device.queue.writeBuffer(particleStateStorage[0], 0, particleStateArray);
                 device.queue.writeBuffer(particleStateStorage[1], 0, particleStateArray);
