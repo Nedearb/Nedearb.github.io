@@ -255,14 +255,14 @@
                 particleTypeCount: makeControl("Particle Types", 8, 1, 63),
                 particleSize: makeControl("Particle Size", 1, 0, MAX_FLOAT),
                 attractionForce: makeControl("Interaction Force", 200, 0, MAX_FLOAT),
-                croudingForce: makeControl("Crouding Force", 500, 0, MAX_FLOAT),
+                crowdingForce: makeControl("Crowding Force", 500, 0, MAX_FLOAT),
                 dragCoef: makeControl("Drag Coef", 0.05, 0, MAX_FLOAT),
                 maxForce: makeControl("Max Force", 5000, 0, MAX_FLOAT),
                 farDist: makeControl("Far Distance", 30, 0, MAX_FLOAT),
                 topDist: makeControl("Top Distance", 20, 0, MAX_FLOAT),
                 closeDist: makeControl("Close Distance", 10, 0, MAX_FLOAT),
-                harmDist: makeControl("Croud Harm Distance", 1, 0, MAX_FLOAT),
-                harmAmount: makeControl("Croud Harm Amount", 0.01, 0, MAX_FLOAT)
+                harmDist: makeControl("Crowd Harm Distance", 1, 0, MAX_FLOAT),
+                harmAmount: makeControl("Crowd Harm Amount", 0.01, 0, MAX_FLOAT)
             };
 
 
@@ -464,7 +464,7 @@
                 const CLOSE_DIST = controls.closeDist.value;
 
                 const ATTRACTION_FORCE = controls.attractionForce.value;
-                const REPULSION_FORCE = controls.croudingForce.value;
+                const REPULSION_FORCE = controls.crowdingForce.value;
                 const DRAG_COEF = controls.dragCoef.value;
                 const MAX_FORCE = controls.maxForce.value;
 
